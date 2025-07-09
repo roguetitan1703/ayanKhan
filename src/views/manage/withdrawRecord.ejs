@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Withdrawal list</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <link rel="stylesheet" href="/plugins/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link href="//cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
+  <link rel="stylesheet" href="/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<style>.card-body::after, .card-footer::after, .card-header::after{
+  display: none;
+}
+  #successFilter{
+    background: green;
+    color: white;
+    padding: 7px;
+    cursor: pointer;
+  }
+  #failedFilter{
+    background: red;
+    color: white;
+    padding: 7px;
+    cursor: pointer;
+  }
+</style>
+<body class="hold-transition sidebar-mini">
+  <div class="wrapper">
+    <%- include('nav') %>
+    <div class="content-wrapper">
+      <section class="content-header">
+        <div class="container-fluid">
+          <div class="row mb-2">
+            <div class="col-sm-6">
+              <h1>Withdrawal list</h1>
+            </div>
+          </div>
+        </div>
+        <!-- /.container-fluid -->
+      </section>
+      <div class="container">
+     
+        <p>Current Date: <span id="currentDate"></span></p>
+        <input type="date" id="datePicker" />
+        <button id="submits">
+      submit
+        </button>
+      </div>
+      
+      <div class="form-group" style="text-align: center;">
+        <input type="text" id="search" placeholder="Enter the account you are looking for">
+      </div>
+
+      <!-- Main content -->
+      <section class="content">
+        <!-- Default box -->
+        <div class="card">
+          <div class="card-header" style="display: flex; justify-content: space-between; width: 100%;">
+            <button class="card-title" id="successFilter" >Success</button>
+            <button class="card-title" id="failedFilter">Failed</button>
+          </div>
+
+
+          <div class="card-body p-0" style="overflow-y: hidden;">
+            <table class="table table-striped projects" id="table1">
+              <thead>
+                <tr>
+                  <th class="text-center">ID</th>
+                  <th class="text-center">Account</th>
+                  <th class="text-center">Bank</th>
+                   <th class="text-center">UPI ID</th>
+                  <th class="text-center">Amount</th>
+                  <th class="text-center">Transaction Id</th>
+                  <th class="text-center">Time</th>
+                  <th class="text-center">Status</th>
+                  <!-- <th class="text-center"></th> -->
+                </tr>
+              </thead>
+              <tbody>
+                
+              </tbody>
+            </table>
+          </div>
+          <nav aria-label="Page navigation example" style="margin-top: 20px;display: flex;justify-content: center;">
+            <ul class="pagination table1">
+              <li class="page-item previous">
+                <a class="page-link" href="#" tabindex="-1">Previous</a>
+              </li>
+              <div id="numbers" style="display: flex;"></div>
+              <li class="page-item next">
+                <a class="page-link" href="#">Next</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+      </section>
+    </div>
+  <script src="/plugins/jquery/jquery.min.js"></script>
+  <script src="/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/dist/js/adminlte.min.js"></script>
+  <script src="/js/admin/admin.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+  <script src="/js/admin/tables.js"></script>
+  <script>
+
+const datePicker = document.getElementById("datePicker");
+    const currentDateElement = document.getElementById("currentDate");
+
+    // Function to format date as YYYY-MM-DD
+    function formatDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    // Get and display the current date
+    const currentDate = new Date();
+    currentDateElement.textContent = formatDate(currentDate);
+
+
+
+    // Event listener for date selection
+    datePicker.addEventListener("change", () => {
+      const selectedDate = datePicker.value; // Get the selected date in YYYY-MM-DD format
+      currentDateElement.textContent = selectedDate; // Display the selected date
+   
+    });
+
+
+
+
+
+    function formateT(params) {
+    let result = (params < 10) ? "0" + params : params;
+    return result;
+    }
+    
+    function timerJoin(params = '', addHours = 0) {
+        let date = '';
+        if (params) {
+            date = new Date(Number(params));
+        } else {
+            date = new Date();
+        }
+    
+        date.setHours(date.getHours() + addHours);
+    
+        let years = formateT(date.getFullYear());
+        let months = formateT(date.getMonth() + 1);
+        let days = formateT(date.getDate());
+    
+        let hours = date.getHours() % 12;
+        hours = hours === 0 ? 12 : hours;
+        let ampm = date.getHours() < 12 ? "AM" : "PM";
+    
+        let minutes = formateT(date.getMinutes());
+        let seconds = formateT(date.getSeconds());
+    
+        return years + '-' + months + '-' + days + ' ' + hours + ':' + minutes + ':' + seconds + ' ' + ampm;
+    }
+    function show(params) {
+      if (params.length == 0) {
+        $('tbody').html(`
+            <tr class="text-center">
+              <td colspan="7">No More Data...</td>
+            </tr>
+          `);
+        return;
+      }
+      let html = '';
+      params.map((data) => {
+        html += `<tr class="text-center">
+                  <td id="${data.id}">
+                    ${data.id}
+                  </td>
+                  <td>
+                    <b>${data.phone}</b>
+                  </td>
+                  <td>
+                    <b style="color: #3498db">${data.name_bank}</b>
+                  </td>
+                  <td style="min-width: 190px;">
+                    <b>${data.sdt}</b>
+                  </td>
+                  <td>
+                    <b>${(data.money)}</b>
+                  </td>
+                  <td style="min-width: 190px;">
+                    <b>${data.id_order}</b>
+                  </td>
+                  <td style="min-width: 190px;">
+                    <b>${timerJoin(data.time)}</b>
+                  </td>
+                  <td class="project-state">
+                    <span class="badge badge-${(data.status == 1) ? 'success' : 'danger'}">${(data.status == 1) ? 'Success' : 'Closed'}</span>
+                  </td>
+                  <!-- <td class="project-actions text-center" style="min-width: 160px;">
+                    <a class="btn btn-success btn-sm confirm-btn" href="" data="${data.id}"><i class="fa fa-check"></i></a>
+                    <!-- <a class="btn btn-info btn-sm" href="#"><i class="fas fa-pencil-alt"></i></a> -->
+                    <a class="btn btn-danger btn-sm delete-btn" href="#" data="${data.id}"><i class="fas fa-trash"></i></a>
+                  </td> -->
+                </tr>`;
+              })
+          $('tbody').html(html);
+          $('.btn-success').click(function (e) { 
+            e.preventDefault();
+            let id = $(this).attr('data');
+            $.ajax({
+              type: "POST",
+              url: "/api/webapi/admin/rechargeDuyet",
+              data: {
+                id: id,
+                type: 'confirm'
+              },
+              dataType: "json",
+              success: function (response) {
+                Swal.fire(
+                  'Good job!',
+                  'You clicked the button!',
+                  'success'
+                )
+                setTimeout(() => {
+                  location.reload();
+                }, 100);
+              }
+            });
+          });
+          $('.btn-danger').click(function (e) { 
+            e.preventDefault();
+            let id = $(this).attr('data');
+            $.ajax({
+              type: "POST",
+              url: "/api/webapi/admin/rechargeDuyet",
+              data: {
+                id: id,
+                type: 'delete'
+              },
+              dataType: "json",
+              success: function (response) {
+                setTimeout(() => {
+                  location.reload();
+                }, 100);
+                Swal.fire(
+                  'Good job!',
+                  'You clicked the button!',
+                  'success'
+                )
+              }
+            });
+          });
+    }
+ 
+    
+    
+    $(document).ready(function () {
+  const date = $('#currentDate').text();
+ 
+  // Default: Load data where status == 0
+  $.ajax({
+    type: "POST",
+    url: "/api/webapi/admin/recharge",
+    data: { date: date },
+    dataType: "json",
+    success: function (response) {
+      const defaultData = response.datas4.filter((item) => item.status == 1);
+      show(defaultData); // Show only status == 0 data by default
+    },
+  });
+
+  // Filter for Success
+  $('#successFilter').click(function () {
+    const selectedDate = $('#currentDate').text(); // Get the selected date dynamically
+  
+    $.ajax({
+      type: "POST",
+      url: "/api/webapi/admin/recharge",
+      data: { date: selectedDate },
+      dataType: "json",
+      success: function (response) {
+        const successData = response.datas4.filter((item) => item.status == 1);
+        show(successData); // Show data where status == 1
+      },
+    });
+  });
+
+  // Filter for Failed
+  $('#failedFilter').click(function () {
+    const selectedDate = $('#currentDate').text(); // Get the selected date dynamically
+
+    $.ajax({
+      type: "POST",
+      url: "/api/webapi/admin/recharge",
+      data: { date: selectedDate },
+      dataType: "json",
+      success: function (response) {
+        const failedData = response.datas4.filter((item) => item.status == 2);
+        show(failedData); // Show data where status == 2
+      },
+    });
+  });
+
+  // Date Selection Logic
+  $('#submits').click(function () {
+    const selectedDate = $('#currentDate').text();// Get the newly selected date
+
+    $.ajax({
+      type: "POST",
+      url: "/api/webapi/admin/recharge",
+      data: { date: selectedDate },
+      dataType: "json",
+      success: function (response) {
+        const currentFilter = $('button.card-title.active').attr('id'); // Identify the active filter
+       
+        if (currentFilter === 'successFilter') {
+          const successData = response.datas4.filter((item) => item.status == 1);
+          show(successData); // Show filtered success data
+        } else if (currentFilter === 'failedFilter') {
+          const failedData = response.datas4.filter((item) => item.status == 2);
+          show(failedData); // Show filtered failed data
+        } else {
+          const defaultData = response.datas4.filter((item) => item.status == 1);
+          show(defaultData); // Show default data (status == 0)
+        }
+      },
+    });
+  });
+
+
+  $('.card-title').click(function () {
+    $('.card-title').removeClass('active'); // Remove active class from all buttons
+    $(this).addClass('active'); // Add active class to the clicked button
+  });
+});
+
+  </script>
+</body>
+
+</html>

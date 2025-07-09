@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manual UPI</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"
+        integrity="sha512-NQfB/bDaB8kaSXF8E77JjhHG5PM6XVRxvHzkZiwl3ddWCEPBa23T76MuWSwAJdMGJnmQqM0VeY9kFszsrBEFrQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+        </script>
+</head>
+
+<body>
+    <style>
+        html {
+            height: 100%;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .pay-button {
+  background-color: #4CAF50;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.pay-button:hover {
+  background-color: #3e8e41;
+}
+
+.pay-button i {
+  margin-right: 10px;
+}
+
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+            max-width: 550px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        header {
+             display: flex;
+    flex-direction: column;
+    /* align-items: center; */
+    background: #434FEE;
+    padding: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    /* border-radius: 12px; */
+    margin: 0px 10px;
+    color: white;
+        }
+         header h2{
+        padding:0;
+        margin:0;
+        }
+
+        footer {
+            background-color: #f2f2f2;
+            padding: 6px;
+            text-align: center;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            margin: 0px 10px;
+            margin-top: auto;
+        }
+
+        .tutorial_root {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f2f2f2;
+            padding: 0px 25px 20px;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 12px;
+            margin: 15px 10px;
+        }
+
+        .tutorial_content p {
+            display: flex;
+            gap: 6px;
+        }
+
+        .tutorial_content p strong {
+            white-space: nowrap;
+        }
+
+        @media (min-width: 500px) {
+            .tutorial_root {
+                padding: 0px 20px 20px;
+            }
+        }
+
+        .upi_display_root {
+        display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0px 25px 20px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 5px;
+    margin: 0px 10px;
+    border: 1px solid  #d7d4d4;
+        }
+
+        .upi_display_root h2 {
+            margin: 20px 0px 5px;
+            font-weight: 600;
+        }
+        .upi_display_root P{
+            padding: 0;
+    margin: 4px;
+    color: gray;
+    font-size: 14px;
+
+}
+.upi_display_root span{
+    padding: 0;
+    margin: 4px;
+    color: orange;
+    font-size: 14px;
+    }
+.upi_display_root img{
+padding: 22px;
+    width: 49%;
+}
+
+
+        .upi_display_content {
+            margin-top: 10px;
+            padding: 0px 13px;
+            border-radius: 9px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .upi_display_content p {
+            display: flex;
+            gap: 6px;
+        }
+
+        .upi_display_content p strong {
+            white-space: nowrap;
+        }
+
+        .upi_display_content__img {
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        .verification_form__root {
+     display: flex;
+    flex-direction: column;
+        }
+
+        .verification_form__root label {
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .verification_form__root input {
+          margin-top: 10px;
+    padding: 10px 13px;
+    border-radius: 5px;
+    border: 1px solid #eceaea;
+    font-size: 14px;
+    background: #f5f5f9;
+        }
+
+        .verification_form__root input::placeholder {
+            font-size: 14px;
+        }
+
+        .verification_form__root button {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 9px;
+            border: 1px solid #ccc;
+            background-color: #1c4ff7;
+            background: linear-gradient(90deg,
+                    #434FEE 0%,
+                    rgba(0, 39, 255, 1) 100%);
+
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .upi_pay_now {
+            margin-top: 10px;
+            padding: 10px 15px;
+            border-radius: 9px;
+            border: 1px solid #ccc;
+            background-color: #1c4ff7;
+            background: linear-gradient(40deg,
+                    #434FEE 0%,
+                    rgba(0, 39, 255, 1) 100%);
+            font-weight: 500;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+        .paytm-section{
+           display: flex;
+    justify-content: space-between;
+    border: 1px solid #d7d4d4;
+    border-radius: 4px;
+    padding: 0 5px;
+        align-items: center;
+        width: 93%;
+    margin: auto;
+        }
+        .paytm-section img{
+        width:85px;
+        }
+        
+        .paytm-section button{
+        background: #434FEE;
+    color: white;
+    border: none;
+    height: 29px;
+    border-radius: 5px;
+    font-size: 13px;
+    padding: 0 12px;
+
+    }
+    
+    .upi-contents{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+width:97%;
+    margin:auto;
+    }
+    
+    .upi-contents .upi-box img{
+    width:47px;
+    }
+    
+    .upi-contents .upi-box{
+      display: flex;
+    border: 1px solid #d7d4d4;
+    border-radius: 4px;
+    padding: 0 5px;
+    width: 47%;
+    margin-bottom: 13px;
+    align-items: center;
+    justify-content: space-evenly;
+    color: #919191;
+padding:5px;
+height:40px;
+    }
+    
+    .id-upi{
+        display: flex;
+    justify-content: space-between;
+    width: 95%;
+    margin: auto;
+    align-items:center;
+    }
+    .id-upi a{
+    color:#5555cc;
+    }
+    
+    .id-upi button{
+        background: #434FEE;
+    color: white;
+    border: none;
+    height: 29px;
+    border-radius: 5px;
+    font-size: 13px;
+    padding: 0 12px;
+
+    }
+    
+    </style>
+
+    <main>
+        <header>
+        <p>Amount Payable</p>
+            <h2>₹<%=Amount%></h2>
+        </header>
+        
+        
+        <div class="paytm-section">
+        <img src="/pay/paytm.svg" />
+        <button>Click To Pay </button>
+        </div>
+        <but class="upi_display_root">
+            <h2 class="upi_display_title">
+                Use Mobile Scan code to pay
+            </h2>
+            
+            <p> Or take screenshot and save then open payment app to scan</p>
+  
+            <img src="<%= qr_code %>" alt="QR Code" />
+
+               
+               <span>Do not use the same QR code to pay multiple times</span> 
+               
+        </but>
+        
+        <form class="verification_form__root" action="submit.php" method="post">
+            <label for="upi_ref_no">Enter ref No. and submit order</label>
+            <input type="text" id="upi_ref_no" name="upi_ref_no" required placeholder="Enter Your UTR here..." />
+            <button id="submit_button" type="submit">Submit UTR</button>
+        </form>
+        
+        <h3 style="    margin: 0;
+    margin-left: 10px;">Please Use The Following App To Pay </h3>
+        
+        <div class="upi-contents">
+        
+        <div class="upi-box">
+        <img src="/pay/phonepe.png"/>
+        <span>PhonePe</span>
+        
+        </div>
+        
+         <div class="upi-box">
+        <img src="/pay/googlepay.png"/>
+        <span>Google Pay</span>
+        
+        </div>
+         <div class="upi-box">
+        <img src="/pay/mobikwik.webp"/>
+        <span>Mobikwik</span>
+        
+        </div>
+         <div class="upi-box">
+        <img src="/pay/upi.webp"/>
+        <span>UPI</span>
+        
+        </div>
+        
+        </div>
+        
+        
+        
+        
+        <p style="margin: 0;
+    margin-left: 10px;
+    color: red;">If the above payment fail, please copy UPI to transfer money </br> Please note UTR need fill in after successful payment </p>
+
+<h4 style="    margin: 0;
+    margin-left: 10px;">UPI ID </h4>
+
+<div class="id-upi"> 
+
+</div>
+
+
+
+     
+
+        
+
+        <footer>
+            <p></p>
+        </footer>
+    </main>
+
+    <script>
+       
+
+        // const displayAmount = document.getElementById("display_amount");
+        // const urlParams = new URLSearchParams(window.location.search);
+        // const amount = urlParams.get("am");
+        // displayAmount.innerText = amount;
+
+        // const upiPayNow = document.getElementById("upi_pay_now");
+
+        const alertMessage = (text) => {
+            const msg = document.createElement('div');
+            msg.setAttribute('data-v-1dcba851', '');
+            msg.className = 'msg';
+
+            const msgContent = document.createElement('div');
+            msgContent.setAttribute('data-v-1dcba851', '');
+            msgContent.className = 'msg-content v-enter-active v-enter-to';
+            msgContent.style = '';
+            msgContent.textContent = text;
+
+            msg.appendChild(msgContent);
+            document.body.appendChild(msg);
+
+            setTimeout(() => {
+                msgContent.classList.remove('v-enter-active', 'v-enter-to');
+                msgContent.classList.add('v-leave-active', 'v-leave-to');
+
+                setTimeout(() => {
+                    document.body.removeChild(msg);
+                }, 100);
+            }, 1000);
+        }
+
+
+        const submitButton = document.getElementById("submit_button");
+        submitButton.addEventListener("click", async (event) => {
+            try {
+
+
+                event.preventDefault();
+                const upiRefNo = document.getElementById("upi_ref_no").value;
+                const amount = '<%=Amount%>';
+
+                const response = await axios.post("/wallet/paynow/manual_upi_request", {
+                    money: amount,
+                    utr: upiRefNo,
+                })
+
+                if (!response?.data) {
+                    alertMessage("Something went Wrong!")
+                    return
+                }
+
+                if (response?.data?.status === false) {
+                    alertMessage(response?.data?.message)
+                    return
+                }
+
+                alertMessage(response?.data?.message)
+
+                window.location.href = "/wallet/rechargerecord"
+            } catch (error) {
+                console.log(error);
+                alertMessage("Something went Wrong!")
+            }
+        });
+    </script>
+    
+  
+    
+    
+</body>
+
+</html>

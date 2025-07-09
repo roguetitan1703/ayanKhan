@@ -1,0 +1,33 @@
+{
+  "data": {
+    "banklist": [
+      {
+        "bankID": 1,
+        "bankLogo": "",
+        "bankName": "BKASH",
+        "reserved": "1"
+      },
+      {
+        "bankID": 2,
+        "bankLogo": "",
+        "bankName": "NAGAD",
+        "reserved": "1"
+      },
+      
+      {
+        "bankID": 3,
+        "bankLogo": "",
+        "bankName": "UPAY",
+        "reserved": "1"
+      },
+      
+      {
+        "bankID": 4,
+        "bankLogo": "",
+        "bankName": "ROCKET",
+        "reserved": "1"
+     
+      }
+    ]
+  }
+}

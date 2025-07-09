@@ -1,0 +1,35 @@
+<div class="customer" id="customerId" onclick="location.href='/support'" style="--f13b4d11-currentFontFamily: 'Roboto', 'Inter', sans-serif; --f6a705e1-currentFontFamily: bahnschrift;">
+  <img class="" data-origin="/assets/png/icon_sevice-45eb7703.png" src="/assets/png/icon_sevice-45eb7703.png" />
+</div>
+
+
+<script>
+  // Get the draggable element
+  var draggableElement = document.getElementById('customerId');
+        
+        // Variables to store mouse position
+        var offsetX = 0;
+        var offsetY = 0;
+
+        // Function to handle touch start event
+        function handleTouchStart(e) {
+            offsetX = e.touches[0].clientX - draggableElement.getBoundingClientRect().left;
+            offsetY = e.touches[0].clientY - draggableElement.getBoundingClientRect().top;
+        }
+
+        // Function to handle touch move event
+        function handleTouchMove(e) {
+            e.preventDefault();
+            var x = e.touches[0].clientX - offsetX;
+            var y = e.touches[0].clientY - offsetY;
+            
+            // Update the position of the draggable element
+            draggableElement.style.left = x + 'px';
+            draggableElement.style.top = y + 'px';
+        }
+
+    // Add event listeners for touch events
+    draggableElement.addEventListener('touchstart', handleTouchStart, false);
+    draggableElement.addEventListener('touchmove', handleTouchMove, false);
+    
+</script>

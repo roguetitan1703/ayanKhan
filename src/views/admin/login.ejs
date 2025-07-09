@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<!-- Source Codes By CodingNepal - www.codingnepalweb.com -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login Form in HTML and CSS | CodingNepal</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- <script src="/js/client.js"></script> -->
+  <style>
+    /* Google Fonts Link */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* Resetting default styling and setting font-family */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Montserrat", sans-serif;
+}
+
+body {
+    width: 100%;
+    min-height: 100vh;
+    padding: 0 10px;
+    display: flex;
+    background: #626cd6;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Login form styling */
+.login_form {
+    width: 100%;
+    max-width: 435px;
+    background: #fff;
+    border-radius: 6px;
+    padding: 41px 30px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.login_form h3 {
+    font-size: 20px;
+    text-align: center;
+}
+
+/* Google & Apple button styling */
+
+.login_form .login_option {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.login_form .login_option .option {
+    width: calc(100% / 2 - 12px);
+}
+
+.login_form .login_option .option a {
+    height: 56px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    background: #F8F8FB;
+    border: 1px solid #DADAF2;
+    border-radius: 5px;
+    margin: 34px 0 24px 0;
+    text-decoration: none;
+    color: #171645;
+    font-weight: 500;
+    transition: 0.2s ease;
+}
+
+.login_form .login_option .option a:hover {
+    background: #ededf5;
+    border-color: #626cd6;
+}
+
+.login_form .login_option .option a img {
+    max-width: 25px;
+}
+
+.login_form p {
+    text-align: center;
+    font-weight: 500;
+}
+
+.login_form .separator {
+    position: relative;
+    margin-bottom: 24px;
+}
+
+/* Login option separator styling */
+.login_form .separator span {
+    background: #fff;
+    z-index: 1;
+    padding: 0 10px;
+    position: relative;
+}
+
+.login_form .separator::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    top: 50%;
+    left: 0;
+    height: 1px;
+    background: #C2C2C2;
+    display: block;
+}
+
+form .input_box label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+/* Input field styling */
+form .input_box input {
+    width: 100%;
+    height: 57px;
+    border: 1px solid #DADAF2;
+    border-radius: 5px;
+    outline: none;
+    background: #F8F8FB;
+    font-size: 17px;
+    padding: 0px 20px;
+    margin-bottom: 25px;
+    transition: 0.2s ease;
+}
+
+form .input_box input:focus {
+    border-color: #626cd6;
+}
+
+form .input_box .password_title {
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+}
+
+form .input_box {
+    position: relative;
+}
+
+a {
+    text-decoration: none;
+    color: #626cd6;
+    font-weight: 500;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Login button styling */
+form button {
+    width: 100%;
+    height: 56px;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    background: #626CD6;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 500;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-bottom: 28px;
+    transition: 0.3s ease;
+}
+
+form button:hover {
+    background: #4954d0;
+}
+  </style>
+</head>
+<body>
+  <div class="login_form">
+    <!-- Login form container -->
+    <form action="#">
+      <h3>Admin Login</h3>
+
+      
+
+      <!-- Login option separator -->
+    
+
+      <!-- Email input box -->
+      <div class="input_box">
+        <label for="userid">User id</label>
+        <input type="text" id="userid" placeholder="Enter User id" required />
+      </div>
+
+      <!-- Paswwrod input box -->
+      <div class="input_box">
+        <div class="password_title">
+          <label for="password">Password</label>
+          <a href="#">Forgot Password?</a>
+        </div>
+
+        <input type="password" id="password" placeholder="Enter your password" required />
+      </div>
+
+       <!-- Login button -->
+      <button type="button" id="login_button">Log In</button>
+
+      <p class="sign_up">Don't have an account? <a href="#">Sign up</a></p>
+    </form>
+  </div>
+</body>
+<script>
+    function setCookie(cname, cvalue, exdays) {
+        const d = new Date()
+        d.setTime(d.getTime() + exdays * 24 * 60 * 60 * 1000)
+        let expires = "expires=" + d.toUTCString()
+        document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/"
+    }
+
+    const alertMessage = text => {
+        const msg = document.createElement("div")
+        msg.setAttribute("data-v-1dcba851", "")
+        msg.className = "message_alert_root"
+
+        const msgContent = document.createElement("div")
+        msgContent.setAttribute("data-v-1dcba851", "")
+        msgContent.className = "message_alert_text"
+        msgContent.style = ""
+        msgContent.textContent = text
+
+        msg.appendChild(msgContent)
+        document.body.appendChild(msg)
+
+        setTimeout(() => {
+            msgContent.classList.remove("v-enter-active", "v-enter-to")
+            msgContent.classList.add("v-leave-active", "v-leave-to")
+
+            setTimeout(() => {
+                document.body.removeChild(msg)
+            }, 100)
+        }, 1000)
+    }
+
+    function validateForm(username, password, text) {
+        if (!username || !password) {
+            alertMessage(text)
+            return false
+        } else {
+            return true
+        }
+    }
+
+
+    const closeEye = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAP1BMVEUAAADExMTExMTDw8PExMTFxcXFxcXExMS/v7/FxcXFxcXExMTExMTDw8PExMTFxcXFxcXExMTPz8+/v7/ExMTkagEbAAAAFHRSTlMAIO/ff29fvxDfMD/PoI+fr1AQMBwdwB4AAAFQSURBVDjL5ZJbkoQgDEXDI4iAqN3sf61DIEFHqmvmv/OhEE5ycwvgm0Il+z9uLQU/HJ0OrTvD4IqdoZdbdOHQh+sczphlSmKlvZu4uPZG2bkqfnDRzFlKL/FKuM9cig+/OoLCmcs8Au7ZqUDcG4IW00OGE2Fh040D/G1baeFO8mDo07gmpdUAa5djVGQPgej3OFtuwqZX7U3o1C0RmjevL+/rWLZqVzqnyV0bc70atgVJInPUaR/ip5TkATrmIBYBd3Gq6pGSVWpc18mPY9jYGKk0jgeP0nCjPxtDTgpnZXDkjGy0kgv3AK+4FG6opMmQXJVwob8wK0/jgCu8qWS+c/oU7hJumUqyrl2MOdDLzd85maVs/p6iQScOMnG1HcYXANlBwsriH9zWua2NZ4zmR8l+Jy6Ycotk/czJfQU8kqmRdgwwhU9y7X+F3yx8VfwAZv4b1F/KTEQAAAAASUVORK5CYII="
+    const openEye = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAOVBMVEUAAADExMTFxcXExMTFxcXFxcXExMTExMTExMTFxcW/v7/ExMTExMTFxcXGxsa/v7/Pz8/FxcXExMSmSILoAAAAEnRSTlMA338gMF/vP7+fEHBPj28wEM9PEbqRAAABB0lEQVQ4y+1TR5IDIQwkCBjCJP3/scvaQj3Feqfsu/sCJXUrIcwXH8GHzbmt0T0r5ciCmNu/tCqsARte0uh8xAlUjCkUHrGtfxHu116LAYLtJjfz3I1xMtld7gelY4zATsyKcmjhjsWDWcHz4AUWBGVGdNRlu0p4bSn3g2S0Pby2h0IWkRDcK3OS66mJC3NWdxFbHBpCwKTq1nNjIgSiahokF+IoLBZNvT5vuafWvk8kXNEMjWYQMBi4k+bmnNraD68Wi4HHm4EPyfyE/vmEO3jbvBRDWBKVMQX7d33e371594/N8pR3lCNf4egk+QrnDv+0+1dEhJvRrt81mVtQq87V4M0Xn+AHBckSwmsdObYAAAAASUVORK5CYII="
+
+    $("#password_eye_btn").click(function (event) {
+        var x = $("#password_inp")
+        var y = $(this)
+        if (x.attr("type") === "password") {
+            x.attr("type", "text")
+            y.attr("src", openEye)
+        } else {
+            x.attr("type", "password")
+            y.attr("src", closeEye)
+        }
+    })
+
+    $("#login_button").click(async e => {
+        e.preventDefault()
+        console.log("working")
+        let username = $("#userid").val().trim()
+        let password = $("#password").val().trim()
+        //  let dialCode = $('.dropdown__value span').text().trim()
+
+        $(".van-overlay").fadeIn(10)
+
+        $.ajax({
+            type: "POST",
+            url: "/api/webapi/admin/login",
+            data: {
+                // dialCode: dialCode,
+                username: username,
+                pwd: password,
+            },
+            dataType: "json",
+            success: function (response) {
+                if (response.status === true) {
+                    $(".van-overlay").fadeOut(300)
+                    $(".Loading").fadeIn(10)
+                    setCookie("token", response.token, 1)
+                    setCookie("auth", response.value, 1)
+                    // alertMess(response.message);
+                    //   setTimeout(() => {
+                    //     location.href = "/home"
+                    //   }, 500)
+
+                    // console.log("first",response.data)
+                    setTimeout(() => {
+                        if (response.data.level === 1 && response.data.rank==0) {
+                            location.href = "/admin/manager/index"
+                        }
+                      
+
+                        // manager/index
+                    }, 500)
+                } else {
+                    $(".van-overlay").fadeOut(300)
+                    alertMessage(response.message)
+                }
+            },
+            error: function (error) {
+                $(".van-overlay").fadeOut(300)
+                alertMessage(error.responseJSON.message)
+            },
+        })
+    })
+
+    $('.dropdown').click(function () {
+        $('.dropdown__list').css("opacity", $('.dropdown__list').css("opacity") === "1" ? "0" : "1");
+        $('.dropdown__list').css("height", $('.dropdown__list').css("opacity") === "1" ? ".2rem" : "6rem");
+    });
+
+
+
+
+</script>
+</html>

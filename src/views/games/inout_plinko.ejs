@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play In-Out Games Plinko</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #game-area {
+            width: 90%;
+            max-width: 1200px;
+            height: 700px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #game-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            visibility: hidden;
+        }
+
+        .loading-message {
+            font-family: Arial, sans-serif;
+            color: #555;
+            font-size: 1.2em;
+        }
+
+        .error-message {
+            font-family: Arial, sans-serif;
+            color: red;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-area">
+        <div class="loading-message">Loading Plinko game... Please wait.</div>
+        <iframe id="game-frame" scrolling="yes" allow="autoplay; fullscreen" allowfullscreen="true" frameborder="0">
+        </iframe>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            // IMPORTANT: Replace this with how you dynamically get the logged-in user's ID.
+            // For a quick test, you can hardcode a user ID that exists in your 'users' table.
+            const userId = "1"; // <<-- REPLACE WITH DYNAMIC USER ID OR A TEST ID FROM YOUR DB
+            const gameMode = "plinko"; // This is fixed for this Plinko page
+
+            if (!userId) {
+                $('#game-area').html('<div class="error-message">Error: User not logged in. Cannot load game.</div>');
+                return;
+            }
+
+            // Make AJAX call to YOUR backend to get the In-Out Games launch URL
+            $.ajax({
+                url: `/inout/launch?userId=${userId}&gameMode=${gameMode}`,
+                method: 'GET',
+                success: function (response) {
+                    if (response.success && response.url) {
+                        const gameUrl = response.url;
+                        const $gameFrame = $('#game-frame');
+
+                        // Hide loading message
+                        $('.loading-message').hide();
+
+                        // Set iframe src and make it visible
+                        $gameFrame.attr('src', gameUrl);
+                        $gameFrame.css('visibility', 'visible');
+
+                        // Optional: Handle iframe load event
+                        $gameFrame.on('load', function () {
+                            console.log('In-Out Plinko game iframe loaded.');
+                        });
+
+                        $gameFrame.on('error', function () {
+                            console.error('Error loading In-Out Plinko game iframe.');
+                            $('#game-area').html('<div class="error-message">Failed to load game. Please try again.</div>');
+                        });
+
+                    } else {
+                        $('#game-area').html('<div class="error-message">Failed to get game URL: ' + (response.message || 'Unknown error from backend') + '</div>');
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error("AJAX Error:", textStatus, errorThrown, jqXHR.responseText);
+                    $('#game-area').html('<div class="error-message">Failed to connect to game launch service.</div>');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
