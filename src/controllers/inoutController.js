@@ -1,8 +1,6 @@
 import * as inoutService from '../services/inoutService.js';
 import connection from '../config/connectDB.js';
-
-// Use formatResponse from inoutService
-const { formatResponse } = require('../services/inoutService');
+import { formatResponse } from '../services/inoutService.js';
 
 export const handleCallback = async (req, res) => {
     const { action, token, data } = req.body;
