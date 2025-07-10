@@ -1455,12 +1455,6 @@ router.get('/slotSpribe', middlewareController, homeController.slotspribePage);
   router.post('/api/callback/inout', validateInoutSignature, inoutController.handleCallback);
   router.get('/inout/launch', inoutController.generateLaunchUrl);
 
-  // Route to display the In-Out Games Plinko game
-  router.get('/play-plinko-inout', (req, res) => {
-      // You might want to add middleware here to ensure user is logged in before rendering the game.
-      res.render('games/inout_plinko'); // Renders src/views/games/inout_plinko.ejs
-  });
-
   return app.use("/", router);
 };
 

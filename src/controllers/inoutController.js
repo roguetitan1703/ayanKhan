@@ -8,7 +8,7 @@ export const handleCallback = async (req, res) => {
         let result;
         switch (action) {
             case 'init':
-                result = await inoutService.handleInit(token);
+                result = await inoutService.handleInit(token, data);
                 break;
             case 'bet':
                 result = await inoutService.handleBet(data);
