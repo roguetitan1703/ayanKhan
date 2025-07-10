@@ -18,7 +18,6 @@ function validateFields(obj, requiredFields) {
 }
 
 export const handleInit = async (token, data = {}) => {
-    // Validate required fields in data
     validateFields(data, ['operator', 'currency', 'gameMode']);
     if (!token) throw new APIError("AuthToken is missing", "INVALID_TOKEN");
     if (data.currency !== "INR") {
@@ -27,20 +26,20 @@ export const handleInit = async (token, data = {}) => {
     const [users] = await connection.query('SELECT * FROM users WHERE token = ?', [token]);
     if (users.length === 0) throw new APIError("User not found", "ACCOUNT_INVALID");
     const user = users[0];
-    // Convert balance to provider format (multiply by 1000 like Spribe)
-    const providerBalance = Number(user.money) * 1000;
+    const providerBalance = Number(user.money).toFixed(2);
     return {
         code: "OK",
         userId: String(user.id_user),
         nickname: user.name_user,
-        balance: String(providerBalance),
-        currency: "INR"
+        balance: providerBalance,
+        currency: "INR",
+        operator: data.operator
     };
 };
 
 export const handleBet = async (data) => {
     validateFields(data, ['user_id', 'amount', 'currency', 'transactionId', 'gameId', 'operator']);
-    const { user_id, amount, currency, transactionId, gameId } = data;
+    const { user_id, amount, currency, transactionId, gameId, operator } = data;
     const betAmount = parseFloat(amount);
     if (betAmount <= 0) {
         throw new APIError("Invalid bet amount", "CHECKS_FAIL");
@@ -51,21 +50,19 @@ export const handleBet = async (data) => {
     const [users] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
     if (users.length === 0) throw new APIError("User not found for bet", "ACCOUNT_INVALID");
     const user = users[0];
-    const userBetAmount = betAmount / 1000;
     const userBalance = Number(user.money);
-    if (userBalance < userBetAmount) throw new APIError("Insufficient funds", "INSUFFICIENT_FUNDS");
+    if (userBalance < betAmount) throw new APIError("Insufficient funds", "INSUFFICIENT_FUNDS");
     const dbConnection = await connection.getConnection();
     try {
         await dbConnection.beginTransaction();
-        // Use toFixed(8) to avoid floating point issues
-        const newBalance = Number((userBalance - userBetAmount).toFixed(8));
+        const newBalance = (userBalance - betAmount).toFixed(2);
         await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
         await dbConnection.query(
-            'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency) VALUES (?, ?, ?, ?, ?, ?)',
-            [user_id, 'bet', userBetAmount, transactionId, gameId, currency]
+            'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, operator) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [user_id, 'bet', betAmount.toFixed(2), transactionId, gameId, currency, operator]
         );
         await dbConnection.commit();
-        return { code: "OK", balance: String(newBalance * 1000) };
+        return { code: "OK", balance: newBalance, operator };
     } catch (error) {
         await dbConnection.rollback();
         throw error;
@@ -74,12 +71,11 @@ export const handleBet = async (data) => {
     }
 };
 
-const handleIdempotentTransaction = async (data, actionType, creditAmount) => {
-    const { transactionId, user_id, gameId, debitId, currency } = data;
+const handleIdempotentTransaction = async (data, actionType, creditAmount, newBalanceOverride) => {
+    const { transactionId, user_id, gameId, debitId, currency, operator } = data;
     if (creditAmount <= 0) {
         throw new APIError("Invalid amount", "CHECKS_FAIL");
     }
-    const userCreditAmount = creditAmount / 1000;
     // Idempotency Check
     const [existing] = await connection.query('SELECT raw_response FROM inout_transactions WHERE transaction_id = ?', [transactionId]);
     if (existing.length > 0 && existing[0].raw_response) {
@@ -106,7 +102,6 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount) => {
         // Check if already rolled back
         const [alreadyRolledBack] = await connection.query('SELECT * FROM inout_transactions WHERE debit_id = ?', [debitId]);
         if (alreadyRolledBack.length > 0) {
-            // Already rolled back, return last response
             if (alreadyRolledBack[0].raw_response) {
                 try {
                     return JSON.parse(alreadyRolledBack[0].raw_response);
@@ -127,14 +122,21 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount) => {
     const dbConnection = await connection.getConnection();
     try {
         await dbConnection.beginTransaction();
-        // Use toFixed(8) to avoid floating point issues
-        await dbConnection.query('UPDATE users SET money = money + ? WHERE id_user = ?', [Number(userCreditAmount.toFixed(8)), user_id]);
-        const [users] = await dbConnection.query('SELECT money FROM users WHERE id_user = ?', [user_id]);
-        const newBalance = users[0].money;
-        const response = { code: "OK", balance: String(newBalance * 1000) };
+        let newBalance;
+        if (newBalanceOverride !== undefined) {
+            newBalance = Number(newBalanceOverride).toFixed(2);
+            await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
+        } else {
+            // For rollback, add amount back
+            const [users] = await dbConnection.query('SELECT money FROM users WHERE id_user = ?', [user_id]);
+            const userBalance = Number(users[0].money);
+            newBalance = (userBalance + creditAmount).toFixed(2);
+            await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
+        }
+        const response = { code: "OK", balance: newBalance, operator };
         await dbConnection.query(
-            'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, debit_id, raw_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [user_id, actionType, userCreditAmount, transactionId, gameId, currency, debitId, JSON.stringify(response)]
+            'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, debit_id, operator, raw_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [user_id, actionType, creditAmount.toFixed(2), transactionId, gameId, currency, debitId, operator, JSON.stringify(response)]
         );
         await dbConnection.commit();
         return response;
@@ -147,13 +149,13 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount) => {
 };
 
 export const handleWithdraw = async (data) => {
-    validateFields(data, ['amount', 'coefficient', 'debitId', 'user_id', 'currency', 'transactionId', 'gameId', 'operator']);
+    validateFields(data, ['amount', 'result', 'debitId', 'user_id', 'currency', 'transactionId', 'gameId', 'operator']);
     if (data.currency !== "INR") {
         throw new APIError("Unsupported currency", "CHECKS_FAIL");
     }
-    // Win amount = amount * coefficient
-    const winAmount = parseFloat(data.amount) * parseFloat(data.coefficient);
-    return handleIdempotentTransaction(data, 'withdraw', winAmount);
+    // Set balance to result (not add)
+    const newBalance = parseFloat(data.result).toFixed(2);
+    return handleIdempotentTransaction(data, 'withdraw', parseFloat(data.amount), newBalance);
 };
 
 export const handleRollback = async (data) => {

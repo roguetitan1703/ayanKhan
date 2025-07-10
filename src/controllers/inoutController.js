@@ -23,6 +23,10 @@ export const handleCallback = async (req, res) => {
                 // As per docs, any other HTTP code is an error, but we should return valid error structure.
                 return res.status(200).json({ code: 'UNKNOWN_ERROR', message: 'Invalid action specified' });
         }
+        // Always include operator in the response if present in data
+        if (data && data.operator && !result.operator) {
+            result.operator = data.operator;
+        }
         return res.status(200).json(result);
     } catch (error) {
         console.error(`Error processing action "${action}":`, error.message);
