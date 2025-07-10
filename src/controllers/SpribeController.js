@@ -337,13 +337,8 @@ export const spribeRollback = async (req, res) => {
         console.log("Transaction found")
         const transaction = existingTransaction[0];
         const user_id = transaction.id_user;
-        const old_balance = Number(transaction.new_balance);
-        const new_balance = Number(old_balance) + Number(amount); // Rollback the amount
-
-        console.log("old_balance", old_balance)
-        console.log("new_balance", new_balance)
-
-        // Find the user in the database using the provided user_id
+        
+        // Get current user balance from database instead of using transaction's new_balance
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
 
         if (!userRows.length) {
@@ -355,9 +350,16 @@ export const spribeRollback = async (req, res) => {
         }
 
         const user = userRows[0];
+        const current_balance = Number(user.money * 1000); // Convert to same scale as transaction amounts
+        const rollback_amount = Number(amount);
+        const new_balance = current_balance + rollback_amount;
 
-        // Update the user's balance to reflect the rollback
-        await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [new_balance, user_id]);
+        console.log("current_balance", current_balance)
+        console.log("rollback_amount", rollback_amount)
+        console.log("new_balance", new_balance)
+
+        // Update the user's balance to reflect the rollback (convert back to user's scale)
+        await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [(new_balance / 1000), user_id]);
         console.log("first2")
         // Check for duplicate rollback using the provider_tx_id
         const [duplicateTransaction] = await connection.query('SELECT * FROM spribetransaction WHERE provider_tx_id = ?', [provider_tx_id]);

@@ -5925,6 +5925,30 @@
          height: 2.66667rem;
          border-radius: .21333rem;
          "></div>
+         
+         <!-- In-Out Games Plinko Card -->
+         <div data-v-ba2be5e6="" class="item" onclick="openInOutGame('plinko')" style="
+         position: relative;
+         background: linear-gradient(180deg, #FF6B35 0%, #F7931E 100%);
+         box-shadow: var(--BoxShadowColor-20), var(--BoxShadowColor-25);
+         border-radius: .21333rem;
+         display: -webkit-box;
+         display: -webkit-flex;
+         display: flex;
+         -webkit-box-pack: center;
+         -webkit-justify-content: center;
+         justify-content: center;
+         -webkit-box-align: center;
+         -webkit-align-items: center;
+         align-items: center;
+         margin-bottom: .16rem;
+         width: 2.88rem;
+         height: 2.88rem;
+         "><img data-v-ba2be5e6="" src="/assets/icons/plinko_inout.png" alt="In-Out Plinko" data-img="/assets/icons/plinko_inout.png" style="
+         width: 2.66667rem;
+         height: 2.66667rem;
+         border-radius: .21333rem;
+         "></div>
          </div>
          </div>
          
@@ -8404,6 +8428,23 @@
          });
       </script>
       <script>
+         // Function to handle In-Out Games
+         async function openInOutGame(gameMode) {
+           try {
+             // Check if user has sufficient balance
+             const data = await axios.get("/api/webapi/rechargegets")
+             
+             if (data.data.data.length > 0) {
+               // Redirect to the In-Out Games page
+               window.location.href = `/play-plinko-inout`;
+             } else {
+               document.querySelector('.recharge-sect').style.display = 'flex';
+             }
+           } catch (error) {
+             document.querySelector('.recharge-sect').style.display = 'flex';
+           }
+         }
+         
          async function openGameById(gameId) {
          
            try {
