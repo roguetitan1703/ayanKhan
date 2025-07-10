@@ -32,21 +32,61 @@ export const handleCallback = async (req, res) => {
 };
 
 export const generateLaunchUrl = async (req, res) => {
-    // This is a placeholder for getting user's auth token.
-    // In a real app, you would get this from the user's session.
-    const userToken = "3ab4125a85ce5c1b60523b89b9e21232d53f6160af5e98859e406c9baa425833"; // Using test token
-    const gameMode = req.query.gameMode || 'plinko';
+    try {
+        // Get the actual user's auth token from cookies
+        const authToken = req.cookies.auth;
+        
+        if (!authToken) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "User not authenticated. Please login first." 
+            });
+        }
 
-    const params = new URLSearchParams({
-        gameMode: gameMode,
-        operatorId: process.env.INOUT_OPERATOR_ID,
-        authToken: userToken,
-        currency: 'INR',
-        lang: 'en',
-        adaptive: 'true'
-    });
+        // Get user data from database using the auth token
+        const [users] = await connection.query(
+            "SELECT `id_user`, `phone`, `money`, `token` FROM users WHERE `token` = ?",
+            [authToken]
+        );
 
-    const launchUrl = `${process.env.INOUT_LAUNCH_URL}?${params.toString()}`;
-    
-    return res.json({ success: true, url: launchUrl });
+        if (!users || users.length === 0) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "Invalid authentication token. Please login again." 
+            });
+        }
+
+        const user = users[0];
+        const gameMode = req.query.gameMode || 'plinko';
+
+        // Use the actual user's token for authentication
+        const params = new URLSearchParams({
+            gameMode: gameMode,
+            operatorId: process.env.INOUT_OPERATOR_ID,
+            authToken: user.token, // Use the actual user token from database
+            currency: 'INR',
+            lang: 'en',
+            adaptive: 'true'
+        });
+
+        const launchUrl = `${process.env.INOUT_LAUNCH_URL}?${params.toString()}`;
+        
+        console.log(`In-Out Games launch URL generated for user ${user.id_user} (${user.phone}) with game mode: ${gameMode}`);
+        
+        return res.json({ 
+            success: true, 
+            url: launchUrl,
+            user: {
+                id: user.id_user,
+                phone: user.phone,
+                balance: user.money
+            }
+        });
+    } catch (error) {
+        console.error('Error generating In-Out Games launch URL:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error while generating game URL" 
+        });
+    }
 }; 

@@ -460,6 +460,19 @@ const myGameHistory = async (req, res) => {
         [rowstr.phone, limit, offset]
       );
       
+    } else if(req.query.game == "inout"){
+
+      [totalRecords] = await connection.query(
+        `SELECT COUNT(*) AS total FROM inout_transactions WHERE user_id = ?`,
+        [rowstr.id_user]
+      );
+
+      // Fetch the paginated history data
+      [history] = await connection.query(
+        `SELECT * FROM inout_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [rowstr.id_user, limit, offset]
+      );
+      
     }
 
     // Return the response with paginated data and total record count

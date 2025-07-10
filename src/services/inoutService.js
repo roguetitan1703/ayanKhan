@@ -15,11 +15,14 @@ export const handleInit = async (token) => {
     if (users.length === 0) throw new APIError("User not found", "ACCOUNT_INVALID");
 
     const user = users[0];
+    // Convert balance to provider format (multiply by 1000 like Spribe)
+    const providerBalance = Number(user.money) * 1000;
+    
     return {
         code: "OK",
         userId: String(user.id_user),
         nickname: user.name_user,
-        balance: String(user.money),
+        balance: String(providerBalance),
         currency: "INR" // Assuming INR for now, can be dynamic later
     };
 };
@@ -42,22 +45,27 @@ export const handleBet = async (data) => {
     if (users.length === 0) throw new APIError("User not found for bet", "ACCOUNT_INVALID");
     
     const user = users[0];
-    if (user.money < betAmount) throw new APIError("Insufficient funds", "INSUFFICIENT_FUNDS");
+    // Convert provider amount to user balance format (divide by 1000 like Spribe)
+    const userBetAmount = betAmount / 1000;
+    const userBalance = Number(user.money);
+    
+    if (userBalance < userBetAmount) throw new APIError("Insufficient funds", "INSUFFICIENT_FUNDS");
 
     // Implement database transaction atomicity
     const dbConnection = await connection.getConnection();
     try {
         await dbConnection.beginTransaction();
         
-        const newBalance = user.money - betAmount;
+        const newBalance = userBalance - userBetAmount;
         await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
         await dbConnection.query(
             'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency) VALUES (?, ?, ?, ?, ?, ?)',
-            [user_id, 'bet', betAmount, transactionId, gameId, currency]
+            [user_id, 'bet', userBetAmount, transactionId, gameId, currency]
         );
         
         await dbConnection.commit();
-        return { code: "OK", balance: String(newBalance) };
+        // Return balance in provider format (multiply by 1000)
+        return { code: "OK", balance: String(newBalance * 1000) };
     } catch (error) {
         await dbConnection.rollback();
         throw error;
@@ -73,6 +81,9 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount) => {
     if (creditAmount <= 0) {
         throw new APIError("Invalid amount", "CHECKS_FAIL");
     }
+
+    // Convert provider amount to user balance format (divide by 1000 like Spribe)
+    const userCreditAmount = creditAmount / 1000;
 
     // 1. Idempotency Check
     const [existing] = await connection.query('SELECT raw_response FROM inout_transactions WHERE transaction_id = ?', [transactionId]);
@@ -106,17 +117,17 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount) => {
     try {
         await dbConnection.beginTransaction();
         
-        await dbConnection.query('UPDATE users SET money = money + ? WHERE id_user = ?', [creditAmount, user_id]);
+        await dbConnection.query('UPDATE users SET money = money + ? WHERE id_user = ?', [userCreditAmount, user_id]);
         
         // 3. Get new balance
         const [users] = await dbConnection.query('SELECT money FROM users WHERE id_user = ?', [user_id]);
         const newBalance = users[0].money;
         
-        // 4. Create Response and Log
-        const response = { code: "OK", balance: String(newBalance) };
+        // 4. Create Response and Log (return balance in provider format)
+        const response = { code: "OK", balance: String(newBalance * 1000) };
         await dbConnection.query(
             'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, debit_id, raw_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [user_id, actionType, creditAmount, transactionId, gameId, currency, debitId, JSON.stringify(response)]
+            [user_id, actionType, userCreditAmount, transactionId, gameId, currency, debitId, JSON.stringify(response)]
         );
         
         await dbConnection.commit();

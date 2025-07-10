@@ -61,19 +61,12 @@
 
     <script>
         $(document).ready(function () {
-            // IMPORTANT: Replace this with how you dynamically get the logged-in user's ID.
-            // For a quick test, you can hardcode a user ID that exists in your 'users' table.
-            const userId = "1"; // <<-- REPLACE WITH DYNAMIC USER ID OR A TEST ID FROM YOUR DB
             const gameMode = "plinko"; // This is fixed for this Plinko page
 
-            if (!userId) {
-                $('#game-area').html('<div class="error-message">Error: User not logged in. Cannot load game.</div>');
-                return;
-            }
-
-            // Make AJAX call to YOUR backend to get the In-Out Games launch URL
+            // Make AJAX call to backend to get the In-Out Games launch URL
+            // The backend will automatically get the user from the auth cookie
             $.ajax({
-                url: `/inout/launch?userId=${userId}&gameMode=${gameMode}`,
+                url: `/inout/launch?gameMode=${gameMode}`,
                 method: 'GET',
                 success: function (response) {
                     if (response.success && response.url) {
@@ -103,7 +96,15 @@
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
                     console.error("AJAX Error:", textStatus, errorThrown, jqXHR.responseText);
-                    $('#game-area').html('<div class="error-message">Failed to connect to game launch service.</div>');
+
+                    // Handle specific error cases
+                    if (jqXHR.status === 401) {
+                        $('#game-area').html('<div class="error-message">Authentication failed. Please <a href="/login">login</a> to play games.</div>');
+                    } else if (jqXHR.status === 500) {
+                        $('#game-area').html('<div class="error-message">Server error. Please try again later.</div>');
+                    } else {
+                        $('#game-area').html('<div class="error-message">Failed to connect to game launch service. Please check your connection and try again.</div>');
+                    }
                 }
             });
         });
