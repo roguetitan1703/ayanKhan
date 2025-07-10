@@ -1,6 +1,9 @@
 import * as inoutService from '../services/inoutService.js';
 import connection from '../config/connectDB.js';
 
+// Use formatResponse from inoutService
+const { formatResponse } = require('../services/inoutService');
+
 export const handleCallback = async (req, res) => {
     const { action, token, data } = req.body;
 
@@ -20,19 +23,15 @@ export const handleCallback = async (req, res) => {
                 result = await inoutService.handleRollback(data);
                 break;
             default:
-                // As per docs, any other HTTP code is an error, but we should return valid error structure.
-                return res.status(200).json({ code: 'UNKNOWN_ERROR', message: 'Invalid action specified', operator: data && data.operator });
+                result = { code: 'CHECKS_FAIL', message: 'Unknown action', operator: data.operator };
         }
-        // Always include operator in the response if present in data
-        if (data && data.operator && !result.operator) {
-            result.operator = data.operator;
-        }
-        return res.status(200).json(result);
-    } catch (error) {
-        console.error(`Error processing action "${action}":`, error.message);
-        // Respond with HTTP 200 but an error code in the body, as per provider docs.
-        // Always include operator if present in data
-        return res.status(200).json({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator: (data && data.operator) || error.operator });
+        // Format the response for the action
+        const formatted = formatResponse(action, result);
+        res.status(200).json({ data: formatted, status: 200 });
+    } catch (err) {
+        // Format error response
+        const formatted = formatResponse(action, err);
+        res.status(200).json({ data: formatted, status: 200 });
     }
 };
 

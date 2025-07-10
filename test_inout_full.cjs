@@ -57,6 +57,11 @@ function checkFields(obj, fields) {
   return fields.every(f => obj.hasOwnProperty(f));
 }
 
+// Helper to check for extra properties
+function hasOnlyAllowedProps(obj, allowed) {
+    return Object.keys(obj).every(k => allowed.includes(k)) && allowed.every(k => k in obj);
+}
+
 // Main test runner
 (async () => {
   let summary = [];
