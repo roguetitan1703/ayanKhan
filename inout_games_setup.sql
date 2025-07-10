@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS inout_transactions (
     INDEX idx_debit_id (debit_id)
 );
 
+-- Ensure operator column exists for inout_transactions
+ALTER TABLE inout_transactions ADD COLUMN IF NOT EXISTS operator VARCHAR(255);
+
 -- 2. Create inout_sessions table (for tracking active game sessions if needed beyond auth token)
 -- This is a suggested table based on Cursor's previous report. If your 'users' table token handling is sufficient,
 -- you might not strictly need this depending on game session requirements.
