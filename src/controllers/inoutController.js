@@ -23,15 +23,11 @@ export const handleCallback = async (req, res) => {
                 // As per docs, any other HTTP code is an error, but we should return valid error structure.
                 return res.status(200).json({ code: 'UNKNOWN_ERROR', message: 'Invalid action specified', operator: data && data.operator });
         }
-        // Always include operator in the response if present in data
-        if (data && data.operator && !result.operator) {
-            result.operator = data.operator;
-        }
+        // Return the result directly without wrapper
         return res.status(200).json(result);
     } catch (error) {
         console.error(`Error processing action "${action}":`, error.message);
         // Respond with HTTP 200 but an error code in the body, as per provider docs.
-        // Always include operator if present in data
         return res.status(200).json({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator: (data && data.operator) || error.operator });
     }
 };

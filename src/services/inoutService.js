@@ -18,14 +18,34 @@ function validateFields(obj, requiredFields, operator) {
     }
 }
 
-// Helper to format all responses to always include operator if available
-function formatResponse(resp, operator) {
-    if (!resp) return { code: 'UNKNOWN_ERROR', message: 'No response', operator };
-    if (typeof resp !== 'object') return { code: 'UNKNOWN_ERROR', message: String(resp), operator };
-    if (operator && !resp.operator) {
-        return { ...resp, operator };
+// Utility to filter response fields strictly
+function filterResponseFields(action, data) {
+    if (action === 'init') {
+        return {
+            code: data.code,
+            userId: data.userId,
+            nickname: data.nickname,
+            balance: data.balance,
+            currency: data.currency,
+            operator: data.operator
+        };
+    } else if (action === 'bet' || action === 'withdraw' || action === 'rollback') {
+        return {
+            code: data.code,
+            balance: data.balance,
+            operator: data.operator
+        };
+    } else if (data.code && data.message) {
+        // Error case
+        const err = {
+            code: data.code,
+            message: data.message,
+            operator: data.operator
+        };
+        if (data.balance !== undefined) err.balance = data.balance;
+        return err;
     }
-    return resp;
+    return data;
 }
 
 // Helper to get user balance safely
@@ -53,21 +73,21 @@ export const handleInit = async (token, data = {}) => {
         const user = users[0];
         const providerBalance = Number(user.money).toFixed(2);
         console.log('[INOUT][INIT] User:', user.id_user, 'Balance:', providerBalance);
-        return formatResponse({
+        return filterResponseFields('init', {
             code: "OK",
             userId: String(user.id_user),
-            nickname: user.name_user,
+            nickname: user.name_user || `Member${user.id_user}`,
             balance: providerBalance,
             currency: "INR",
             operator: operator
-        }, operator);
+        });
     } catch (error) {
         console.error('[INOUT][INIT][ERROR]', error);
         let balance = null;
         if (data && data.user_id) {
             balance = await getUserBalance(data.user_id);
         }
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
+        return filterResponseFields('init', { code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance });
     }
 };
 
@@ -101,7 +121,7 @@ export const handleBet = async (data) => {
             );
             await dbConnection.commit();
             console.log('[INOUT][BET] User:', user_id, 'Balance after:', newBalance);
-            return formatResponse({ code: "OK", balance: newBalance, operator }, operator);
+            return filterResponseFields('bet', { code: "OK", balance: newBalance, operator });
         } catch (error) {
             await dbConnection.rollback();
             throw error;
@@ -114,7 +134,7 @@ export const handleBet = async (data) => {
         if (data && data.user_id) {
             balance = await getUserBalance(data.user_id);
         }
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
+        return filterResponseFields('bet', { code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance });
     }
 };
 
@@ -133,7 +153,7 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
                 try { storedResponse = JSON.parse(storedResponse); } catch (e) { storedResponse = null; }
             }
             console.log(`[INOUT][${actionType.toUpperCase()}] Idempotent response returned.`);
-            return formatResponse(storedResponse, operator);
+            return filterResponseFields(actionType, storedResponse);
         }
         if (actionType === 'rollback') {
             validateFields(data, ['debitId'], operator);
@@ -157,7 +177,7 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
                     try { storedResponse = JSON.parse(storedResponse); } catch (e) { storedResponse = null; }
                 }
                 console.log(`[INOUT][ROLLBACK] Already rolled back, returning stored response.`);
-                return formatResponse(storedResponse, operator);
+                return filterResponseFields(actionType, storedResponse);
             }
         }
         if (actionType === 'withdraw') {
@@ -190,7 +210,7 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
             );
             await dbConnection.commit();
             console.log(`[INOUT][${actionType.toUpperCase()}] User:`, user_id, 'Balance after:', newBalance);
-            return formatResponse(response, operator);
+            return filterResponseFields(actionType, response);
         } catch (error) {
             await dbConnection.rollback();
             throw error;
@@ -203,7 +223,7 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
         if (data && data.user_id) {
             balance = await getUserBalance(data.user_id);
         }
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
+        return filterResponseFields(actionType, { code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance });
     }
 };
 
@@ -217,14 +237,14 @@ export const handleWithdraw = async (data) => {
         }
         // Set balance to result (not add)
         const newBalance = parseFloat(data.result).toFixed(2);
-        return await handleIdempotentTransaction(data, 'withdraw', parseFloat(data.amount), newBalance);
+        return filterResponseFields('withdraw', await handleIdempotentTransaction(data, 'withdraw', parseFloat(data.amount), newBalance));
     } catch (error) {
         console.error('[INOUT][WITHDRAW][ERROR]', error);
         let balance = null;
         if (data && data.user_id) {
             balance = await getUserBalance(data.user_id);
         }
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
+        return filterResponseFields('withdraw', { code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance });
     }
 };
 
@@ -237,13 +257,13 @@ export const handleRollback = async (data) => {
             throw new APIError("Unsupported currency", "CHECKS_FAIL", operator);
         }
         const refundAmount = parseFloat(data.amount);
-        return await handleIdempotentTransaction(data, 'rollback', refundAmount);
+        return filterResponseFields('rollback', await handleIdempotentTransaction(data, 'rollback', refundAmount));
     } catch (error) {
         console.error('[INOUT][ROLLBACK][ERROR]', error);
         let balance = null;
         if (data && data.user_id) {
             balance = await getUserBalance(data.user_id);
         }
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
+        return filterResponseFields('rollback', { code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance });
     }
 }; 
