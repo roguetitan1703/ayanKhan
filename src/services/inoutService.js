@@ -2,167 +2,193 @@ import connection from '../config/connectDB.js';
 
 // Custom Error class to pass specific codes to the controller
 class APIError extends Error {
-    constructor(message, code) {
+    constructor(message, code, operator) {
         super(message);
         this.code = code;
+        this.operator = operator;
     }
 }
 
 // Utility to validate required fields in data
-function validateFields(obj, requiredFields) {
+function validateFields(obj, requiredFields, operator) {
     for (const field of requiredFields) {
         if (obj[field] === undefined || obj[field] === null) {
-            throw new APIError(`must have required property '${field}':`, 'CHECKS_FAIL');
+            throw new APIError(`must have required property '${field}':`, 'CHECKS_FAIL', operator);
         }
     }
 }
 
-export const handleInit = async (token, data = {}) => {
-    validateFields(data, ['operator', 'currency', 'gameMode']);
-    if (!token) throw new APIError("AuthToken is missing", "INVALID_TOKEN");
-    if (data.currency !== "INR") {
-        throw new APIError("Unsupported currency", "CHECKS_FAIL");
+// Helper to format all responses to always include operator if available
+function formatResponse(resp, operator) {
+    if (!resp) return { code: 'UNKNOWN_ERROR', message: 'No response', operator };
+    if (typeof resp !== 'object') return { code: 'UNKNOWN_ERROR', message: String(resp), operator };
+    if (operator && !resp.operator) {
+        return { ...resp, operator };
     }
-    const [users] = await connection.query('SELECT * FROM users WHERE token = ?', [token]);
-    if (users.length === 0) throw new APIError("User not found", "ACCOUNT_INVALID");
-    const user = users[0];
-    const providerBalance = Number(user.money).toFixed(2);
-    return {
-        code: "OK",
-        userId: String(user.id_user),
-        nickname: user.name_user,
-        balance: providerBalance,
-        currency: "INR",
-        operator: data.operator
-    };
+    return resp;
+}
+
+export const handleInit = async (token, data = {}) => {
+    const operator = data.operator;
+    try {
+        validateFields(data, ['operator', 'currency', 'gameMode'], operator);
+        if (!token) throw new APIError("AuthToken is missing", "INVALID_TOKEN", operator);
+        if (data.currency !== "INR") {
+            throw new APIError("Unsupported currency", "CHECKS_FAIL", operator);
+        }
+        const [users] = await connection.query('SELECT * FROM users WHERE token = ?', [token]);
+        if (users.length === 0) throw new APIError("User not found", "ACCOUNT_INVALID", operator);
+        const user = users[0];
+        const providerBalance = Number(user.money).toFixed(2);
+        return formatResponse({
+            code: "OK",
+            userId: String(user.id_user),
+            nickname: user.name_user,
+            balance: providerBalance,
+            currency: "INR",
+            operator: operator
+        }, operator);
+    } catch (error) {
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
+    }
 };
 
 export const handleBet = async (data) => {
-    validateFields(data, ['user_id', 'amount', 'currency', 'transactionId', 'gameId', 'operator']);
-    const { user_id, amount, currency, transactionId, gameId, operator } = data;
-    const betAmount = parseFloat(amount);
-    if (betAmount <= 0) {
-        throw new APIError("Invalid bet amount", "CHECKS_FAIL");
-    }
-    if (currency !== "INR") {
-        throw new APIError("Unsupported currency", "CHECKS_FAIL");
-    }
-    const [users] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
-    if (users.length === 0) throw new APIError("User not found for bet", "ACCOUNT_INVALID");
-    const user = users[0];
-    const userBalance = Number(user.money);
-    if (userBalance < betAmount) throw new APIError("Insufficient funds", "INSUFFICIENT_FUNDS");
-    const dbConnection = await connection.getConnection();
+    const operator = data.operator;
     try {
-        await dbConnection.beginTransaction();
-        const newBalance = (userBalance - betAmount).toFixed(2);
-        await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
-        await dbConnection.query(
-            'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, operator) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [user_id, 'bet', betAmount.toFixed(2), transactionId, gameId, currency, operator]
-        );
-        await dbConnection.commit();
-        return { code: "OK", balance: newBalance, operator };
+        validateFields(data, ['user_id', 'amount', 'currency', 'transactionId', 'gameId', 'operator'], operator);
+        const { user_id, amount, currency, transactionId, gameId } = data;
+        const betAmount = parseFloat(amount);
+        if (betAmount <= 0) {
+            throw new APIError("Invalid bet amount", "CHECKS_FAIL", operator);
+        }
+        if (currency !== "INR") {
+            throw new APIError("Unsupported currency", "CHECKS_FAIL", operator);
+        }
+        const [users] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
+        if (users.length === 0) throw new APIError("User not found for bet", "ACCOUNT_INVALID", operator);
+        const user = users[0];
+        const userBalance = Number(user.money);
+        if (userBalance < betAmount) throw new APIError("Insufficient funds", "INSUFFICIENT_FUNDS", operator);
+        const dbConnection = await connection.getConnection();
+        try {
+            await dbConnection.beginTransaction();
+            const newBalance = (userBalance - betAmount).toFixed(2);
+            await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
+            await dbConnection.query(
+                'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, operator) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [user_id, 'bet', betAmount.toFixed(2), transactionId, gameId, currency, operator]
+            );
+            await dbConnection.commit();
+            return formatResponse({ code: "OK", balance: newBalance, operator }, operator);
+        } catch (error) {
+            await dbConnection.rollback();
+            throw error;
+        } finally {
+            dbConnection.release();
+        }
     } catch (error) {
-        await dbConnection.rollback();
-        throw error;
-    } finally {
-        dbConnection.release();
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
     }
 };
 
 const handleIdempotentTransaction = async (data, actionType, creditAmount, newBalanceOverride) => {
     const { transactionId, user_id, gameId, debitId, currency, operator } = data;
-    if (creditAmount <= 0) {
-        throw new APIError("Invalid amount", "CHECKS_FAIL");
-    }
-    // Idempotency Check
-    const [existing] = await connection.query('SELECT raw_response FROM inout_transactions WHERE transaction_id = ?', [transactionId]);
-    if (existing.length > 0 && existing[0].raw_response) {
-        const storedResponse = existing[0].raw_response;
-        if (typeof storedResponse === 'object' && storedResponse !== null) {
-            return storedResponse;
-        } else if (typeof storedResponse === 'string') {
-            try {
-                return JSON.parse(storedResponse);
-            } catch (e) {
-                throw new APIError("Idempotent response parsing error", "UNKNOWN_ERROR");
-            }
-        } else {
-            throw new APIError("Idempotent response format error", "UNKNOWN_ERROR");
-        }
-    }
-    // For rollback, check if debitId exists and not already rolled back
-    if (actionType === 'rollback') {
-        validateFields(data, ['debitId']);
-        const [debitTx] = await connection.query('SELECT * FROM inout_transactions WHERE transaction_id = ?', [debitId]);
-        if (debitTx.length === 0) {
-            throw new APIError("Original bet transaction not found for rollback", "CHECKS_FAIL");
-        }
-        // Check if already rolled back
-        const [alreadyRolledBack] = await connection.query('SELECT * FROM inout_transactions WHERE debit_id = ?', [debitId]);
-        if (alreadyRolledBack.length > 0) {
-            if (alreadyRolledBack[0].raw_response) {
-                try {
-                    return JSON.parse(alreadyRolledBack[0].raw_response);
-                } catch (e) {
-                    throw new APIError("Idempotent rollback response parsing error", "UNKNOWN_ERROR");
-                }
-            }
-        }
-    }
-    // For withdraw, check if debitId exists (for idempotency)
-    if (actionType === 'withdraw') {
-        validateFields(data, ['debitId']);
-        const [debitTx] = await connection.query('SELECT * FROM inout_transactions WHERE transaction_id = ?', [debitId]);
-        if (debitTx.length === 0) {
-            throw new APIError("Original bet transaction not found for withdraw", "CHECKS_FAIL");
-        }
-    }
-    const dbConnection = await connection.getConnection();
     try {
-        await dbConnection.beginTransaction();
-        let newBalance;
-        if (newBalanceOverride !== undefined) {
-            newBalance = Number(newBalanceOverride).toFixed(2);
-            await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
-        } else {
-            // For rollback, add amount back
-            const [users] = await dbConnection.query('SELECT money FROM users WHERE id_user = ?', [user_id]);
-            const userBalance = Number(users[0].money);
-            newBalance = (userBalance + creditAmount).toFixed(2);
-            await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
+        if (creditAmount <= 0) {
+            throw new APIError("Invalid amount", "CHECKS_FAIL", operator);
         }
-        const response = { code: "OK", balance: newBalance, operator };
-        await dbConnection.query(
-            'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, debit_id, operator, raw_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [user_id, actionType, creditAmount.toFixed(2), transactionId, gameId, currency, debitId, operator, JSON.stringify(response)]
-        );
-        await dbConnection.commit();
-        return response;
+        // Idempotency Check
+        const [existing] = await connection.query('SELECT raw_response FROM inout_transactions WHERE transaction_id = ?', [transactionId]);
+        if (existing.length > 0 && existing[0].raw_response) {
+            let storedResponse = existing[0].raw_response;
+            if (typeof storedResponse === 'string') {
+                try { storedResponse = JSON.parse(storedResponse); } catch (e) { storedResponse = null; }
+            }
+            return formatResponse(storedResponse, operator);
+        }
+        // For rollback, check if debitId exists and not already rolled back
+        if (actionType === 'rollback') {
+            validateFields(data, ['debitId'], operator);
+            const [debitTx] = await connection.query('SELECT * FROM inout_transactions WHERE transaction_id = ?', [debitId]);
+            if (debitTx.length === 0) {
+                throw new APIError("Original bet transaction not found for rollback", "CHECKS_FAIL", operator);
+            }
+            // Check if already rolled back
+            const [alreadyRolledBack] = await connection.query('SELECT * FROM inout_transactions WHERE debit_id = ?', [debitId]);
+            if (alreadyRolledBack.length > 0) {
+                let storedResponse = alreadyRolledBack[0].raw_response;
+                if (typeof storedResponse === 'string') {
+                    try { storedResponse = JSON.parse(storedResponse); } catch (e) { storedResponse = null; }
+                }
+                return formatResponse(storedResponse, operator);
+            }
+        }
+        // For withdraw, check if debitId exists (for idempotency)
+        if (actionType === 'withdraw') {
+            validateFields(data, ['debitId'], operator);
+            const [debitTx] = await connection.query('SELECT * FROM inout_transactions WHERE transaction_id = ?', [debitId]);
+            if (debitTx.length === 0) {
+                throw new APIError("Original bet transaction not found for withdraw", "CHECKS_FAIL", operator);
+            }
+        }
+        const dbConnection = await connection.getConnection();
+        try {
+            await dbConnection.beginTransaction();
+            let newBalance;
+            if (newBalanceOverride !== undefined) {
+                newBalance = Number(newBalanceOverride).toFixed(2);
+                await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
+            } else {
+                // For rollback, add amount back
+                const [users] = await dbConnection.query('SELECT money FROM users WHERE id_user = ?', [user_id]);
+                const userBalance = Number(users[0].money);
+                newBalance = (userBalance + creditAmount).toFixed(2);
+                await dbConnection.query('UPDATE users SET money = ? WHERE id_user = ?', [newBalance, user_id]);
+            }
+            const response = { code: "OK", balance: newBalance, operator };
+            await dbConnection.query(
+                'INSERT INTO inout_transactions (user_id, action, amount, transaction_id, game_id, currency, debit_id, operator, raw_response) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [user_id, actionType, creditAmount.toFixed(2), transactionId, gameId, currency, debitId, operator, JSON.stringify(response)]
+            );
+            await dbConnection.commit();
+            return formatResponse(response, operator);
+        } catch (error) {
+            await dbConnection.rollback();
+            throw error;
+        } finally {
+            dbConnection.release();
+        }
     } catch (error) {
-        await dbConnection.rollback();
-        throw error;
-    } finally {
-        dbConnection.release();
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
     }
 };
 
 export const handleWithdraw = async (data) => {
-    validateFields(data, ['amount', 'result', 'debitId', 'user_id', 'currency', 'transactionId', 'gameId', 'operator']);
-    if (data.currency !== "INR") {
-        throw new APIError("Unsupported currency", "CHECKS_FAIL");
+    const operator = data.operator;
+    try {
+        validateFields(data, ['amount', 'result', 'debitId', 'user_id', 'currency', 'transactionId', 'gameId', 'operator'], operator);
+        if (data.currency !== "INR") {
+            throw new APIError("Unsupported currency", "CHECKS_FAIL", operator);
+        }
+        // Set balance to result (not add)
+        const newBalance = parseFloat(data.result).toFixed(2);
+        return await handleIdempotentTransaction(data, 'withdraw', parseFloat(data.amount), newBalance);
+    } catch (error) {
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
     }
-    // Set balance to result (not add)
-    const newBalance = parseFloat(data.result).toFixed(2);
-    return handleIdempotentTransaction(data, 'withdraw', parseFloat(data.amount), newBalance);
 };
 
 export const handleRollback = async (data) => {
-    validateFields(data, ['amount', 'debitId', 'user_id', 'currency', 'transactionId', 'gameId', 'operator']);
-    if (data.currency !== "INR") {
-        throw new APIError("Unsupported currency", "CHECKS_FAIL");
+    const operator = data.operator;
+    try {
+        validateFields(data, ['amount', 'debitId', 'user_id', 'currency', 'transactionId', 'gameId', 'operator'], operator);
+        if (data.currency !== "INR") {
+            throw new APIError("Unsupported currency", "CHECKS_FAIL", operator);
+        }
+        const refundAmount = parseFloat(data.amount);
+        return await handleIdempotentTransaction(data, 'rollback', refundAmount);
+    } catch (error) {
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
     }
-    const refundAmount = parseFloat(data.amount);
-    return handleIdempotentTransaction(data, 'rollback', refundAmount);
 }; 
