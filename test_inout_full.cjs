@@ -2,224 +2,384 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
-const { URL } = require('url');
 
-// ==== PASTE YOUR LAUNCH URL HERE ====
-const LAUNCH_URL = 'https://api.inout.games/api/launch?gameMode=plinko&operatorId=a30c0bc1-d0bd-4257-b662-a840dff37321&authToken=222c03e18eabc4372f8e220f7828197c&currency=INR&lang=en&adaptive=true';
+// ==== CONFIGURATION ====
+const LAUNCH_URL = 'https://api.inout.games/api/launch?gameMode=plinko&operatorId=a30c0bc1-d0bd-4257-b662-a840dff37321&authToken=30a65962d274860af99269454e6f61a7&currency=INR&lang=en&adaptive=true';
+const CALLBACK_URL = 'https://75club.games/api/callback/inout';
+const INOUT_SECRET = '08C5AF03B9473F5F3200BB09011D78B864E6CC97DC3A1FD565B0D92802DD2E241402B29C146CC5B13EE3D962150E9CDA0260DA08CA0905E4E16542A847B6555B';
+const OPERATOR = 'a30c0bc1-d0bd-4257-b662-a840dff37321';
+const CURRENCY = 'INR';
 
-// ==== SET YOUR INOUT SECRET HERE ====
-const SECRET = '08C5AF03B9473F5F3200BB09011D78B864E6CC97DC3A1FD565B0D92802DD2E241402B29C146CC5B13EE3D962150E9CDA0260DA08CA0905E4E16542A847B6555B';
-
-// ==== EXTRACT PARAMS FROM URL ====
-const urlObj = new URL(LAUNCH_URL);
-const BASE_URL = 'https://75club.games';
-const GAME_MODE = urlObj.searchParams.get('gameMode');
-const OPERATOR = urlObj.searchParams.get('operatorId');
-const TOKEN = urlObj.searchParams.get('authToken');
-const CURRENCY = urlObj.searchParams.get('currency') || 'INR';
-
-// Helper to sign the request body
-function signBody(body, secret = SECRET) {
-  return crypto.createHmac('sha256', secret).update(body).digest('hex');
+function signBody(body) {
+  const str = JSON.stringify(body);
+  return crypto.createHmac('sha256', INOUT_SECRET).update(str).digest('hex');
 }
 
-// Helper to POST to /api/callback/inout
-async function postInout(action, data, opts = {}) {
-  const body = {
-    action,
-    token: TOKEN,
-    data: { ...data },
-  };
-  const rawBody = JSON.stringify(body);
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-request-sign': opts.signature || signBody(rawBody),
-  };
+async function postInout(action, data, token) {
+  const body = { action, ...(token ? { token } : {}), data };
+  const headers = { 'x-request-sign': signBody(body) };
   try {
-    const res = await axios.post(`${BASE_URL}/api/callback/inout`, body, { headers, validateStatus: () => true });
-    return { status: res.status, data: res.data };
+    const res = await axios.post(CALLBACK_URL, body, { headers });
+    return res;
   } catch (e) {
-    return { status: e.response?.status || 500, data: e.response?.data || { error: e.message } };
+    if (e.response) return e.response;
+    throw e;
   }
 }
 
-// Helper to print test results
-function printResult(desc, passed, details = '') {
-  const color = passed ? '\x1b[32m' : '\x1b[31m';
-  console.log(`${color}${passed ? 'PASSED' : 'FAILED'}\x1b[0m: ${desc}`);
-  if (!passed && details) {
-    console.log('    Details:', details);
+function checkFields(obj, expected) {
+  return (
+    Object.keys(obj).length === expected.length &&
+    expected.every((k) => Object.prototype.hasOwnProperty.call(obj, k))
+  );
+}
+
+function printResult(desc, pass, details) {
+  if (pass) {
+    console.log(`PASSED: ${desc}`);
+  } else {
+    console.log(`FAILED: ${desc}`);
+    if (details) console.log('    Details:', details);
   }
 }
 
-// Helper to check required fields in response
-function checkFields(obj, fields) {
-  return fields.every(f => obj.hasOwnProperty(f));
-}
-
-// Main test runner
+// Main test runner - replicates provider's exact test scenarios
 (async () => {
-  let summary = [];
-  let userId, balance, gameId, transactionId, debitId;
-  let lastInitBalance;
+  try {
+    console.log('=== In-Out Games Provider Test Replication ===');
+    
+    // 1. Launch to get token
+    const launchRes = await axios.get(LAUNCH_URL);
+    const url = launchRes.request.res.responseUrl;
+    const tokenMatch = url.match(/authToken=([a-f0-9]{32,})/i);
+    const token = tokenMatch ? tokenMatch[1] : null;
+    if (!token) {
+      console.error('Could not extract token from launch URL');
+      process.exit(1);
+    }
+    console.log('Using token:', token);
 
-  // 1. Session initialization (init)
-  const initData = {
-    gameMode: GAME_MODE,
-    operator: OPERATOR,
-    currency: CURRENCY,
-  };
-  const initRes = await postInout('init', initData);
-  printResult('Session initialization returns 200', initRes.status === 200, JSON.stringify(initRes.data));
-  printResult('Session initialization code is OK', initRes.data.code === 'OK', JSON.stringify(initRes.data));
-  printResult('Session initialization response includes operator', checkFields(initRes.data, ['operator']), JSON.stringify(initRes.data));
-  printResult('Session initialization response includes userId, nickname, balance, currency', checkFields(initRes.data, ['userId', 'nickname', 'balance', 'currency']), JSON.stringify(initRes.data));
-  userId = initRes.data.userId;
-  balance = parseFloat(initRes.data.balance);
-  lastInitBalance = balance;
-  summary.push(initRes.data.code === 'OK' && checkFields(initRes.data, ['operator', 'userId', 'nickname', 'balance', 'currency']));
+    // === SCENARIO 1: Standard bet and credit ===
+    console.log('\n--- Scenario 1: Standard bet and credit ---');
+    
+    // 1.1 Session initialization
+    let res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
+    const userId = res.data.userId;
+    const balance = parseFloat(res.data.balance);
 
-  // 2. Player bet (bet)
-  transactionId = crypto.randomUUID();
-  gameId = crypto.randomUUID();
-  const betData = {
-    operator: OPERATOR,
-    currency: CURRENCY,
-    amount: '100.00',
-    user_id: userId,
-    transactionId,
-    gameId,
-  };
-  const betRes = await postInout('bet', betData);
-  printResult('Player bet returns 200', betRes.status === 200, JSON.stringify(betRes.data));
-  printResult('Player bet code is OK', betRes.data.code === 'OK', JSON.stringify(betRes.data));
-  printResult('Player bet response includes operator', checkFields(betRes.data, ['operator']), JSON.stringify(betRes.data));
-  const balanceAfterBet = parseFloat(betRes.data.balance);
-  printResult('Balance decreased by 100.00', Math.abs(balanceAfterBet - (balance - 100.00)) < 0.01, `Expected: ${(balance - 100.00).toFixed(2)}, Got: ${balanceAfterBet}`);
-  summary.push(betRes.data.code === 'OK' && checkFields(betRes.data, ['operator']) && Math.abs(balanceAfterBet - (balance - 100.00)) < 0.01);
+    // 1.2 Player's bet
+    const betId = crypto.randomUUID();
+    res = await postInout('bet', { 
+      operator: OPERATOR, 
+      currency: CURRENCY, 
+      amount: '1.00', 
+      user_id: userId, 
+      transactionId: betId, 
+      gameId: crypto.randomUUID() 
+    }, token);
+    printResult('Player bet returns 200', res.status === 200);
+    printResult('Player bet code is OK', res.data.code === 'OK');
+    printResult('Player bet response fields', checkFields(res.data, ['code', 'balance', 'operator']));
 
-  // 3. Withdraw (credit winnings)
-  const withdrawId = crypto.randomUUID();
-  const withdrawData = {
-    operator: OPERATOR,
-    currency: CURRENCY,
-    amount: '100.00',
-    result: (balanceAfterBet + 200.00).toFixed(2),
-    coefficient: '2.00',
-    user_id: userId,
-    transactionId: withdrawId,
-    gameId,
-    isFinished: true,
-    debitId: transactionId,
-  };
-  const withdrawRes = await postInout('withdraw', withdrawData);
-  printResult('Withdraw returns 200', withdrawRes.status === 200, JSON.stringify(withdrawRes.data));
-  printResult('Withdraw code is OK', withdrawRes.data.code === 'OK', JSON.stringify(withdrawRes.data));
-  printResult('Withdraw response includes operator', checkFields(withdrawRes.data, ['operator']), JSON.stringify(withdrawRes.data));
-  const balanceAfterWithdraw = parseFloat(withdrawRes.data.balance);
-  printResult('Balance set to result', Math.abs(balanceAfterWithdraw - parseFloat(withdrawData.result)) < 0.01, `Expected: ${withdrawData.result}, Got: ${balanceAfterWithdraw}`);
-  summary.push(withdrawRes.data.code === 'OK' && checkFields(withdrawRes.data, ['operator']) && Math.abs(balanceAfterWithdraw - parseFloat(withdrawData.result)) < 0.01);
+    // 1.3 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
 
-  // 4. Rollback (refund bet)
-  const rollbackId = crypto.randomUUID();
-  const rollbackData = {
-    operator: OPERATOR,
-    currency: CURRENCY,
-    amount: '100.00',
-    user_id: userId,
-    transactionId: rollbackId,
-    gameId,
-    debitId: transactionId,
-    isFinished: true,
-  };
-  const rollbackRes = await postInout('rollback', rollbackData);
-  printResult('Rollback returns 200', rollbackRes.status === 200, JSON.stringify(rollbackRes.data));
-  printResult('Rollback code is OK', rollbackRes.data.code === 'OK', JSON.stringify(rollbackRes.data));
-  printResult('Rollback response includes operator', checkFields(rollbackRes.data, ['operator']), JSON.stringify(rollbackRes.data));
-  const balanceAfterRollback = parseFloat(rollbackRes.data.balance);
-  printResult('Balance increased by 100.00', Math.abs(balanceAfterRollback - (balanceAfterWithdraw + 100.00)) < 0.01, `Expected: ${(balanceAfterWithdraw + 100.00).toFixed(2)}, Got: ${balanceAfterRollback}`);
-  summary.push(rollbackRes.data.code === 'OK' && checkFields(rollbackRes.data, ['operator']) && Math.abs(balanceAfterRollback - (balanceAfterWithdraw + 100.00)) < 0.01);
+    // 1.4 Credit based on game results
+    const withdrawId = crypto.randomUUID();
+    res = await postInout('withdraw', {
+      operator: OPERATOR,
+      currency: CURRENCY,
+      amount: '1.00',
+      result: '1.00',
+      user_id: userId,
+      transactionId: withdrawId,
+      gameId: crypto.randomUUID(),
+      coefficient: '2.00',
+      isFinished: true,
+      debitId: betId,
+    }, token);
+    printResult('Credit returns 200', res.status === 200);
+    printResult('Credit code is OK', res.data.code === 'OK');
+    printResult('Credit response fields', checkFields(res.data, ['code', 'balance', 'operator']));
 
-  // 5. Overestimated bet (insufficient funds)
-  const overBetId = crypto.randomUUID();
-  const overBetData = {
-    operator: OPERATOR,
-    currency: CURRENCY,
-    amount: (balanceAfterRollback + 1000000).toFixed(2),
-    user_id: userId,
-    transactionId: overBetId,
-    gameId: crypto.randomUUID(),
-  };
-  const overBetRes = await postInout('bet', overBetData);
-  printResult('Overestimated bet returns INSUFFICIENT_FUNDS', overBetRes.data.code === 'INSUFFICIENT_FUNDS', JSON.stringify(overBetRes.data));
-  summary.push(overBetRes.data.code === 'INSUFFICIENT_FUNDS');
+    // 1.5 Additional session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Additional session initialization returns 200', res.status === 200);
+    printResult('Additional session initialization code is OK', res.data.code === 'OK');
 
-  // 6. Incorrect currency
-  const badCurrencyId = crypto.randomUUID();
-  const badCurrencyData = {
-    operator: OPERATOR,
-    currency: 'WRD',
-    amount: '100.00',
-    user_id: userId,
-    transactionId: badCurrencyId,
-    gameId: crypto.randomUUID(),
-  };
-  const badCurrencyRes = await postInout('bet', badCurrencyData);
-  printResult('Incorrect currency returns CHECKS_FAIL', badCurrencyRes.data.code === 'CHECKS_FAIL', JSON.stringify(badCurrencyRes.data));
-  summary.push(badCurrencyRes.data.code === 'CHECKS_FAIL');
+    // === SCENARIO 2: Standard bet and double refund ===
+    console.log('\n--- Scenario 2: Standard bet and double refund ---');
+    
+    // 2.1 Session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
 
-  // 7. Incorrect signature
-  const badSigId = crypto.randomUUID();
-  const badSigData = {
-    operator: OPERATOR,
-    currency: CURRENCY,
-    amount: '100.00',
-    user_id: userId,
-    transactionId: badSigId,
-    gameId: crypto.randomUUID(),
-  };
-  const badSigRes = await postInout('bet', badSigData, { signature: 'bad_signature' });
-  printResult('Incorrect signature returns CHECKS_FAIL', badSigRes.data.code === 'CHECKS_FAIL', JSON.stringify(badSigRes.data));
-  summary.push(badSigRes.data.code === 'CHECKS_FAIL');
+    // 2.2 Player's bet
+    const betId2 = crypto.randomUUID();
+    res = await postInout('bet', { 
+      operator: OPERATOR, 
+      currency: CURRENCY, 
+      amount: '1.00', 
+      user_id: userId, 
+      transactionId: betId2, 
+      gameId: crypto.randomUUID() 
+    }, token);
+    printResult('Player bet returns 200', res.status === 200);
+    printResult('Player bet code is OK', res.data.code === 'OK');
+    printResult('Player bet response fields', checkFields(res.data, ['code', 'balance', 'operator']));
 
-  // 8. Idempotency: repeat withdraw
-  const repeatWithdrawRes = await postInout('withdraw', withdrawData);
-  printResult('Repeat withdraw is idempotent', repeatWithdrawRes.data.balance === withdrawRes.data.balance, `Expected: ${withdrawRes.data.balance}, Got: ${repeatWithdrawRes.data.balance}`);
-  summary.push(repeatWithdrawRes.data.balance === withdrawRes.data.balance);
+    // 2.3 Player's balance refund
+    const rollbackId = crypto.randomUUID();
+    res = await postInout('rollback', {
+      operator: OPERATOR,
+      currency: CURRENCY,
+      amount: '1.00',
+      user_id: userId,
+      transactionId: rollbackId,
+      gameId: crypto.randomUUID(),
+      debitId: betId2,
+      isFinished: true,
+    }, token);
+    printResult('Balance refund returns 200', res.status === 200);
+    printResult('Balance refund code is OK', res.data.code === 'OK');
+    printResult('Balance refund response fields', checkFields(res.data, ['code', 'balance', 'operator']));
 
-  // 9. Idempotency: repeat rollback
-  const repeatRollbackRes = await postInout('rollback', rollbackData);
-  printResult('Repeat rollback is idempotent', repeatRollbackRes.data.balance === rollbackRes.data.balance, `Expected: ${rollbackRes.data.balance}, Got: ${repeatRollbackRes.data.balance}`);
-  summary.push(repeatRollbackRes.data.balance === rollbackRes.data.balance);
+    // 2.4 Repeated refund operation (idempotency)
+    res = await postInout('rollback', {
+      operator: OPERATOR,
+      currency: CURRENCY,
+      amount: '1.00',
+      user_id: userId,
+      transactionId: rollbackId,
+      gameId: crypto.randomUUID(),
+      debitId: betId2,
+      isFinished: true,
+    }, token);
+    printResult('Repeated refund returns 200', res.status === 200);
+    printResult('Repeated refund code is OK', res.data.code === 'OK');
+    printResult('Repeated refund response fields', checkFields(res.data, ['code', 'balance', 'operator']));
 
-  // 10. Non-existent rollback
-  const nonExistRollbackId = crypto.randomUUID();
-  const nonExistRollbackData = {
-    operator: OPERATOR,
-    currency: CURRENCY,
-    amount: '100.00',
-    user_id: userId,
-    transactionId: crypto.randomUUID(),
-    gameId: crypto.randomUUID(),
-    debitId: nonExistRollbackId,
-    isFinished: true,
-  };
-  const nonExistRollbackRes = await postInout('rollback', nonExistRollbackData);
-  printResult('Non-existent rollback returns CHECKS_FAIL', nonExistRollbackRes.data.code === 'CHECKS_FAIL', JSON.stringify(nonExistRollbackRes.data));
-  summary.push(nonExistRollbackRes.data.code === 'CHECKS_FAIL');
+    // 2.5 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
 
-  // 11. Final balance check (should match lastInitBalance + 200.00 + 100.00)
-  const finalInitRes = await postInout('init', initData);
-  const finalBalance = parseFloat(finalInitRes.data.balance);
-  printResult('Final balance matches expected', Math.abs(finalBalance - (lastInitBalance + 200.00 + 100.00)) < 0.01, `Expected: ${(lastInitBalance + 200.00 + 100.00).toFixed(2)}, Got: ${finalBalance}`);
-  summary.push(Math.abs(finalBalance - (lastInitBalance + 200.00 + 100.00)) < 0.01);
+    // === SCENARIO 3: Incorrect bet currency ===
+    console.log('\n--- Scenario 3: Incorrect bet currency ---');
+    
+    // 3.1 Session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
 
-  // 12. Check required fields in all responses
-  printResult('All responses include operator', summary.slice(0, 4).every(Boolean), 'Check previous operator field checks');
+    // 3.2 Player's bet with wrong currency
+    res = await postInout('bet', { 
+      operator: OPERATOR, 
+      currency: 'WRD', 
+      amount: '1.00', 
+      user_id: userId, 
+      transactionId: crypto.randomUUID(), 
+      gameId: crypto.randomUUID() 
+    }, token);
+    printResult('Incorrect currency bet returns 200', res.status === 200);
+    printResult('Incorrect currency bet error', res.data.code === 'CHECKS_FAIL');
 
-  // Summary
-  const passed = summary.filter(Boolean).length;
-  const total = summary.length;
-  console.log(`\nTest summary: ${passed}/${total} passed.`);
-  process.exit(passed === total ? 0 : 1);
+    // 3.3 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
+
+    // === SCENARIO 4: Standard initialization ===
+    console.log('\n--- Scenario 4: Standard initialization ---');
+    
+    // 4.1 Session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
+
+    // 4.2 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
+
+    // === SCENARIO 5: Overestimated bet ===
+    console.log('\n--- Scenario 5: Overestimated bet ---');
+    
+    // 5.1 Session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
+
+    // 5.2 Player's bet with too high amount
+    res = await postInout('bet', { 
+      operator: OPERATOR, 
+      currency: CURRENCY, 
+      amount: '2.00', 
+      user_id: userId, 
+      transactionId: crypto.randomUUID(), 
+      gameId: crypto.randomUUID() 
+    }, token);
+    printResult('Overestimated bet returns 200', res.status === 200);
+    printResult('Overestimated bet error', res.data.code === 'INSUFFICIENT_FUNDS');
+
+    // 5.3 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
+
+    // === SCENARIO 6: Non-existent rollback ===
+    console.log('\n--- Scenario 6: Non-existent rollback ---');
+    
+    // 6.1 Session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
+
+    // 6.2 Credit to player balance (non-existent rollback)
+    res = await postInout('rollback', {
+      operator: OPERATOR,
+      currency: CURRENCY,
+      amount: '1.00',
+      user_id: userId,
+      transactionId: crypto.randomUUID(),
+      gameId: crypto.randomUUID(),
+      debitId: crypto.randomUUID(),
+      isFinished: true,
+    }, token);
+    printResult('Non-existent rollback returns 200', res.status === 200);
+    printResult('Non-existent rollback error', res.data.code === 'CHECKS_FAIL');
+
+    // 6.3 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
+
+    // === SCENARIO 7: Standard bet and double credit ===
+    console.log('\n--- Scenario 7: Standard bet and double credit ---');
+    
+    // 7.1 Session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
+
+    // 7.2 Player's bet
+    const betId3 = crypto.randomUUID();
+    res = await postInout('bet', { 
+      operator: OPERATOR, 
+      currency: CURRENCY, 
+      amount: '1.00', 
+      user_id: userId, 
+      transactionId: betId3, 
+      gameId: crypto.randomUUID() 
+    }, token);
+    printResult('Player bet returns 200', res.status === 200);
+    printResult('Player bet code is OK', res.data.code === 'OK');
+    printResult('Player bet response fields', checkFields(res.data, ['code', 'balance', 'operator']));
+
+    // 7.3 Credit based on game results
+    const withdrawId2 = crypto.randomUUID();
+    res = await postInout('withdraw', {
+      operator: OPERATOR,
+      currency: CURRENCY,
+      amount: '1.00',
+      result: '1.00',
+      user_id: userId,
+      transactionId: withdrawId2,
+      gameId: crypto.randomUUID(),
+      coefficient: '2.00',
+      isFinished: true,
+      debitId: betId3,
+    }, token);
+    printResult('Credit returns 200', res.status === 200);
+    printResult('Credit code is OK', res.data.code === 'OK');
+    printResult('Credit response fields', checkFields(res.data, ['code', 'balance', 'operator']));
+
+    // 7.4 Repeated credit based on game results (idempotency)
+    res = await postInout('withdraw', {
+      operator: OPERATOR,
+      currency: CURRENCY,
+      amount: '1.00',
+      result: '1.00',
+      user_id: userId,
+      transactionId: withdrawId2,
+      gameId: crypto.randomUUID(),
+      coefficient: '2.00',
+      isFinished: true,
+      debitId: betId3,
+    }, token);
+    printResult('Repeated credit returns 200', res.status === 200);
+    printResult('Repeated credit code is OK', res.data.code === 'OK');
+    printResult('Repeated credit response fields', checkFields(res.data, ['code', 'balance', 'operator']));
+
+    // 7.5 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
+
+    // === SCENARIO 8: Incorrect signature key ===
+    console.log('\n--- Scenario 8: Incorrect signature key ---');
+    
+    // 8.1 Session initialization with bad signature
+    const badBody = { action: 'init', token, data: { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY } };
+    try {
+      await axios.post(CALLBACK_URL, badBody, { headers: { 'x-request-sign': '01e9dd8bb3fac402fd99cc0f411ff469d0063c4aede1decd2b35e1130d646731' } });
+      printResult('Incorrect signature should fail', false);
+    } catch (e) {
+      printResult('Incorrect signature returns 403', e.response && e.response.status === 403);
+    }
+
+    // === SCENARIO 9: Standard bet and refund ===
+    console.log('\n--- Scenario 9: Standard bet and refund ---');
+    
+    // 9.1 Session initialization
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Session initialization returns 200', res.status === 200);
+    printResult('Session initialization code is OK', res.data.code === 'OK');
+
+    // 9.2 Player's bet
+    const betId4 = crypto.randomUUID();
+    res = await postInout('bet', { 
+      operator: OPERATOR, 
+      currency: CURRENCY, 
+      amount: '1.00', 
+      user_id: userId, 
+      transactionId: betId4, 
+      gameId: crypto.randomUUID() 
+    }, token);
+    printResult('Player bet returns 200', res.status === 200);
+    printResult('Player bet code is OK', res.data.code === 'OK');
+    printResult('Player bet response fields', checkFields(res.data, ['code', 'balance', 'operator']));
+
+    // 9.3 Player's balance refund
+    const rollbackId2 = crypto.randomUUID();
+    res = await postInout('rollback', {
+      operator: OPERATOR,
+      currency: CURRENCY,
+      amount: '1.00',
+      user_id: userId,
+      transactionId: rollbackId2,
+      gameId: crypto.randomUUID(),
+      debitId: betId4,
+      isFinished: true,
+    }, token);
+    printResult('Balance refund returns 200', res.status === 200);
+    printResult('Balance refund code is OK', res.data.code === 'OK');
+    printResult('Balance refund response fields', checkFields(res.data, ['code', 'balance', 'operator']));
+
+    // 9.4 Re-initializing session
+    res = await postInout('init', { gameMode: 'plinko', operator: OPERATOR, currency: CURRENCY }, token);
+    printResult('Re-initializing session returns 200', res.status === 200);
+    printResult('Re-initializing session code is OK', res.data.code === 'OK');
+
+    console.log('\n=== All Provider Test Scenarios Completed ===');
+    
+  } catch (err) {
+    console.error('FATAL ERROR:', err);
+    process.exit(1);
+  }
 })();

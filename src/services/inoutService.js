@@ -170,7 +170,7 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
                 throw new APIError('Cannot rollback: withdraw already processed for this bet', 'CHECKS_FAIL', operator);
             }
             // Check if already rolled back
-            const [alreadyRolledBack] = await connection.query('SELECT * FROM inout_transactions WHERE debit_id = ?', [debitId]);
+            const [alreadyRolledBack] = await connection.query('SELECT * FROM inout_transactions WHERE debit_id = ? AND action = ?', [debitId, 'rollback']);
             if (alreadyRolledBack.length > 0) {
                 let storedResponse = alreadyRolledBack[0].raw_response;
                 if (typeof storedResponse === 'string') {
