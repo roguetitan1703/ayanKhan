@@ -28,6 +28,17 @@ function formatResponse(resp, operator) {
     return resp;
 }
 
+// Helper to get user balance safely
+async function getUserBalance(user_id) {
+    try {
+        const [users] = await connection.query('SELECT money FROM users WHERE id_user = ?', [user_id]);
+        if (users.length > 0) {
+            return Number(users[0].money).toFixed(2);
+        }
+    } catch (e) {}
+    return null;
+}
+
 export const handleInit = async (token, data = {}) => {
     const operator = data.operator;
     try {
@@ -52,7 +63,11 @@ export const handleInit = async (token, data = {}) => {
         }, operator);
     } catch (error) {
         console.error('[INOUT][INIT][ERROR]', error);
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
+        let balance = null;
+        if (data && data.user_id) {
+            balance = await getUserBalance(data.user_id);
+        }
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
     }
 };
 
@@ -95,7 +110,11 @@ export const handleBet = async (data) => {
         }
     } catch (error) {
         console.error('[INOUT][BET][ERROR]', error);
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
+        let balance = null;
+        if (data && data.user_id) {
+            balance = await getUserBalance(data.user_id);
+        }
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
     }
 };
 
@@ -116,7 +135,6 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
             console.log(`[INOUT][${actionType.toUpperCase()}] Idempotent response returned.`);
             return formatResponse(storedResponse, operator);
         }
-        // For rollback, check if debitId exists and not already rolled back
         if (actionType === 'rollback') {
             validateFields(data, ['debitId'], operator);
             const [debitTx] = await connection.query('SELECT * FROM inout_transactions WHERE transaction_id = ?', [debitId]);
@@ -142,7 +160,6 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
                 return formatResponse(storedResponse, operator);
             }
         }
-        // For withdraw, check if debitId exists (for idempotency)
         if (actionType === 'withdraw') {
             validateFields(data, ['debitId'], operator);
             const [debitTx] = await connection.query('SELECT * FROM inout_transactions WHERE transaction_id = ?', [debitId]);
@@ -182,7 +199,11 @@ const handleIdempotentTransaction = async (data, actionType, creditAmount, newBa
         }
     } catch (error) {
         console.error(`[INOUT][${actionType.toUpperCase()}][ERROR]`, error);
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
+        let balance = null;
+        if (data && data.user_id) {
+            balance = await getUserBalance(data.user_id);
+        }
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
     }
 };
 
@@ -199,7 +220,11 @@ export const handleWithdraw = async (data) => {
         return await handleIdempotentTransaction(data, 'withdraw', parseFloat(data.amount), newBalance);
     } catch (error) {
         console.error('[INOUT][WITHDRAW][ERROR]', error);
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
+        let balance = null;
+        if (data && data.user_id) {
+            balance = await getUserBalance(data.user_id);
+        }
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
     }
 };
 
@@ -215,6 +240,10 @@ export const handleRollback = async (data) => {
         return await handleIdempotentTransaction(data, 'rollback', refundAmount);
     } catch (error) {
         console.error('[INOUT][ROLLBACK][ERROR]', error);
-        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator }, operator);
+        let balance = null;
+        if (data && data.user_id) {
+            balance = await getUserBalance(data.user_id);
+        }
+        return formatResponse({ code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance }, operator);
     }
 }; 
