@@ -268,4 +268,6 @@ export const handleRollback = async (data) => {
         }
         return formatResponse('rollback', { code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance });
     }
-}; 
+};
+
+export { formatResponse }; 
