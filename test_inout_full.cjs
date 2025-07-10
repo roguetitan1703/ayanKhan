@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const { URL } = require('url');
 
 // ==== PASTE YOUR LAUNCH URL HERE ====
-const LAUNCH_URL = 'https://api.inout.games/api/launch?gameMode=plinko&operatorId=a30c0bc1-d0bd-4257-b662-a840dff37321&authToken=222c03e18eabc4372f8e220f7828197c&currency=INR&lang=en&adaptive=true';
+const LAUNCH_URL = 'https://api.inout.games/api/launch?gameMode=plinko&operatorId=a30c0bc1-d0bd-4257-b662-a840dff37321&authToken=30a65962d274860af99269454e6f61a7&currency=INR&lang=en&adaptive=true';  
 
 // ==== SET YOUR INOUT SECRET HERE ====
 const SECRET = '08C5AF03B9473F5F3200BB09011D78B864E6CC97DC3A1FD565B0D92802DD2E241402B29C146CC5B13EE3D962150E9CDA0260DA08CA0905E4E16542A847B6555B';

@@ -1,6 +1,5 @@
 import * as inoutService from '../services/inoutService.js';
 import connection from '../config/connectDB.js';
-import { formatResponse } from '../services/inoutService.js';
 
 export const handleCallback = async (req, res) => {
     const { action, token, data } = req.body;
@@ -23,13 +22,11 @@ export const handleCallback = async (req, res) => {
             default:
                 result = { code: 'CHECKS_FAIL', message: 'Unknown action', operator: data.operator };
         }
-        // Format the response for the action
-        const formatted = formatResponse(action, result);
-        res.status(200).json({ data: formatted, status: 200 });
+        // Return the formatted response directly without extra wrapper
+        res.status(200).json(result);
     } catch (err) {
-        // Format error response
-        const formatted = formatResponse(action, err);
-        res.status(200).json({ data: formatted, status: 200 });
+        // Format error response and return directly
+        res.status(200).json({ code: 'UNKNOWN_ERROR', message: err.message, operator: data?.operator });
     }
 };
 
