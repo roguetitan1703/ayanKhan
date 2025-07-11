@@ -30,17 +30,16 @@ function filterResponseFields(action, data) {
             operator: data.operator
         };
     } else if (action === 'bet' || action === 'withdraw' || action === 'rollback') {
+        // Only code and balance for bet/withdraw/rollback
         return {
             code: data.code,
-            balance: data.balance,
-            operator: data.operator
+            balance: data.balance
         };
     } else if (data.code && data.message) {
-        // Error case
+        // Error case for bet/withdraw/rollback: only code, message, and balance if present
         const err = {
             code: data.code,
-            message: data.message,
-            operator: data.operator
+            message: data.message
         };
         if (data.balance !== undefined) err.balance = data.balance;
         return err;
