@@ -26,12 +26,8 @@ export const handleCallback = async (req, res) => {
                     operator: data && data.operator
                 });
         }
-        // If result already has the correct structure, return it directly
-        if (result && result.data && result.status === 200) {
-            return res.status(200).json(result);
-        }
-        // Otherwise, wrap once
-        return res.status(200).json({ data: result, status: 200 });
+        // FINAL: Always return the result directly, no extra wrapping
+        return res.status(200).json(result);
     } catch (error) {
         console.error(`Error processing action "${action}":`, error.message);
         const errorData = {
