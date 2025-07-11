@@ -266,4 +266,4 @@ export const handleRollback = async (data) => {
         }
         return filterResponseFields('rollback', { code: error.code || 'UNKNOWN_ERROR', message: error.message, operator, balance });
     }
-}; 
+};
