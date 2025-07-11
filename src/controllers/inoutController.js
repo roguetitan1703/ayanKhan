@@ -20,21 +20,20 @@ export const handleCallback = async (req, res) => {
                 result = await inoutService.handleRollback(data);
                 break;
             default:
-                // As per docs, any other HTTP code is an error, but we should return valid error structure.
                 return res.status(200).json({
-                    data: {
-                        code: 'UNKNOWN_ERROR',
-                        message: 'Invalid action specified',
-                        operator: data && data.operator
-                    },
-                    status: 200
+                    code: 'UNKNOWN_ERROR',
+                    message: 'Invalid action specified',
+                    operator: data && data.operator
                 });
         }
-        // Always return { data: ..., status: 200 }
+        // If result already has the correct structure, return it directly
+        if (result && result.data && result.status === 200) {
+            return res.status(200).json(result);
+        }
+        // Otherwise, wrap once
         return res.status(200).json({ data: result, status: 200 });
     } catch (error) {
         console.error(`Error processing action "${action}":`, error.message);
-        // Respond with HTTP 200 but an error code in the body, as per provider docs.
         const errorData = {
             code: error.code || 'UNKNOWN_ERROR',
             message: error.message,
