@@ -234,9 +234,8 @@ export const handleWithdraw = async (data) => {
         if (data.currency !== "INR") {
             throw new APIError("Unsupported currency", "CHECKS_FAIL", operator);
         }
-        // Set balance to result (not add)
-        const newBalance = parseFloat(data.result).toFixed(2);
-        return filterResponseFields('withdraw', await handleIdempotentTransaction(data, 'withdraw', parseFloat(data.amount), newBalance));
+        // Add result to current balance (not set)
+        return filterResponseFields('withdraw', await handleIdempotentTransaction(data, 'withdraw', parseFloat(data.result)));
     } catch (error) {
         console.error('[INOUT][WITHDRAW][ERROR]', error);
         let balance = null;
