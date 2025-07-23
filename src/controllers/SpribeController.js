@@ -21,87 +21,63 @@ const generateHashSignature = (token, timestamp) => {
 
 export const spribeLaunchGame = async (req, res) => {
     const userToken = req.userToken;
-    const { gameName } = req.body
+    const { gameName } = req.body;
     const game = gameName;
 
-    // console.log(userToken, gameName, game)
+    console.log('[SPRIBE][LAUNCH] Incoming:', { userToken, gameName });
 
     try {
         const [userRows] = await connection.query('SELECT * FROM users WHERE token = ?', [userToken]);
-        
-        // console.log(userRows,"userRows")
-        // Check if user exists
         if (!userRows.length) {
+            console.error(`[SPRIBE][LAUNCH][ERROR] Token expired or invalid: ${userToken}`);
             return res.status(404).json({
                 errorCode: 4,
                 message: 'Token expired or invalid',
             });
         }
-
-        const playerId = userRows[0].phone; // Get the actual player ID from the database
-        const userId = userRows[0].id_user; // Get the actual player ID from the database
-        
-       
-
-        // Generate the token and hash signature
+        const playerId = userRows[0].phone;
+        const userId = userRows[0].id_user;
         const timestamp = Date.now();
         const token = generateToken(playerId, timestamp);
         const hashSignature = generateHashSignature(token, timestamp);
-
         await connection.query('UPDATE users SET spribeLaunchToken = ? WHERE phone = ?', [token, playerId]);
-        console.log(token, "token")
-        // Create launch URL
+        console.log('[SPRIBE][LAUNCH] Token generated:', token);
         const launchUrl = `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`;
-        console.log(launchUrl)
+        console.log('[SPRIBE][LAUNCH] Launch URL:', launchUrl);
         return res.json({ Data: launchUrl });
     } catch (error) {
-        console.error('Error fetching player game link:', error);
+        console.error('[SPRIBE][LAUNCH][EXCEPTION]', error, { userToken, gameName });
         throw error;
     }
 };
 
 export const spribeInfo = async (req, res) => {
     const { session_token, currency, user_id } = req.body;
-    console.log("spribeInfo", req.body)
-
+    console.log('[SPRIBE][INFO] Incoming:', req.body);
     try {
-        // Find the user in the database using the provided token
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
-
-        // Check if user exists 
         if (!userRows.length) {
-            console.log("first")
+            console.error(`[SPRIBE][INFO][ERROR] User not found for id_user: ${user_id}`);
             return res.status(200).json({
                 code: 401,
                 message: 'User token is invalid',
             });
         }
-        console.log("second")
         const user = userRows[0];
-        // Send a success response with INR currency
-
-        // 1000 stands for 1
-        // 500 = 500000 units
-        // 0.5 = 500 units
-        // 0.05 = 50 units
-
         const response = {
             code: 200,
-            message: "ok",
+            message: 'ok',
             data: {
                 user_id: user.id_user,
                 username: user.name_user,
-                balance: Number(user.money) * 1000, // Convert to the correct unit by dividing by 1000
-                currency: currency // Use the currency provided in the request
+                balance: Number(user.money) * 1000,
+                currency: currency
             }
         };
-
-        console.log("third", response)
+        console.log('[SPRIBE][INFO] Response:', response);
         return res.json(response);
-
     } catch (error) {
-        console.log("four")
-        console.log(error)
+        console.error('[SPRIBE][INFO][EXCEPTION]', error, req.body);
         return res.status(200).json({
             code: 500,
             message: 'Internal error',
@@ -111,46 +87,31 @@ export const spribeInfo = async (req, res) => {
 
 export const spribeAuth = async (req, res) => {
     const { user_token, session_token, platform, currency } = req.body;
-    console.log("spribeAuth", req.body)
-
+    console.log('[SPRIBE][AUTH] Incoming:', req.body);
     try {
-        // Find the user in the database using the provided token
         const [userRows] = await connection.query('SELECT * FROM users WHERE spribeLaunchToken = ?', [user_token]);
-
-        // Check if user exists 
         if (!userRows.length) {
-            console.log("first")
+            console.error(`[SPRIBE][AUTH][ERROR] Invalid or expired token: ${user_token}`);
             return res.status(200).json({
                 code: 401,
                 message: 'Token expired or invalid',
             });
         }
-        console.log("second")
         const user = userRows[0];
-        // Send a success response with INR currency
-
-        // 1000 stands for 1
-        // 500 = 500000 units
-        // 0.5 = 500 units
-        // 0.05 = 50 units
-
         const response = {
             code: 200,
-            message: "Success",
+            message: 'Success',
             data: {
                 user_id: user.id_user,
                 username: user.name_user,
-                balance: Number(user.money) * 1000, // Convert to the correct unit by dividing by 1000
-                currency: currency // Use the currency provided in the request
+                balance: Number(user.money) * 1000,
+                currency: currency
             }
         };
-
-        console.log("third", response)
+        console.log('[SPRIBE][AUTH] Response:', response);
         return res.json(response);
-
     } catch (error) {
-        console.log("four")
-        console.log(error)
+        console.error('[SPRIBE][AUTH][EXCEPTION]', error, req.body);
         return res.status(200).json({
             code: 500,
             message: 'Internal error',
@@ -159,20 +120,17 @@ export const spribeAuth = async (req, res) => {
 };
 
 export const spribeDeposit = async (req, res) => {
-    console.log(req.body,"spribeDeposit");
-
+    console.log('[SPRIBE][DEPOSIT] Incoming:', req.body);
     const {
         user_id, currency, amount, provider, provider_tx_id, game, action, action_id, session_token, platform, withdraw_provider_tx_id
     } = req.body;
-
     try {
-        // Check if the transaction ID is already processed to handle duplicate transactions
         const [existingTransaction] = await connection.query('SELECT * FROM spribetransaction WHERE provider_tx_id = ?', [provider_tx_id]);
-
         if (existingTransaction.length) {
+            console.warn(`[SPRIBE][DEPOSIT][DUPLICATE] provider_tx_id: ${provider_tx_id}`);
             const duplicateResponse = {
                 code: 409,
-                message: "Duplicate transaction",
+                message: 'Duplicate transaction',
                 data: {
                     user_id,
                     operator_tx_id: existingTransaction[0].operator_tx_id,
@@ -185,21 +143,18 @@ export const spribeDeposit = async (req, res) => {
             };
             return res.status(200).json(duplicateResponse);
         }
-
-        // Find the user in the database using the provided user_id
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
-
-        // Check if user exists
         if (!userRows.length) {
+            console.error(`[SPRIBE][DEPOSIT][ERROR] User not found for id_user: ${user_id}`);
             return res.status(401).json({
                 code: 401,
                 message: 'User token is invalid',
             });
         }
-
         const user = userRows[0];
         const old_balance = Number(user.money * 1000);
         if (amount > old_balance) {
+            console.error(`[SPRIBE][DEPOSIT][ERROR] Insufficient funds for user_id: ${user_id}, required: ${amount}, available: ${old_balance}`);
             return res.status(402).json({
                 code: 402,
                 message: 'Insufficient funds',
@@ -212,21 +167,14 @@ export const spribeDeposit = async (req, res) => {
             });
         }
         let new_balance = Number(old_balance) - Number(amount);
-         
-        // Update the user's balance
         await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [(new_balance / 1000), user_id]);
-
-        // Generate a unique operator transaction ID
         const operator_tx_id = `OP_TX_${Date.now()}`;
-
-        // Record the deposit transaction in the database
         await connection.query('INSERT INTO spribetransaction (id_user,type, phone, name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, deposit_amount, game, action, action_id, session_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)', [
             user_id, 0, user.phone, user.name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, amount, game, action, action_id, session_token
         ]);
-
         const successResponse = {
             code: 200,
-            message: "Success",
+            message: 'Success',
             data: {
                 user_id,
                 operator_tx_id,
@@ -237,10 +185,10 @@ export const spribeDeposit = async (req, res) => {
                 currency
             }
         };
-
+        console.log('[SPRIBE][DEPOSIT] Success:', successResponse);
         return res.status(200).json(successResponse);
     } catch (error) {
-        console.error('Error processing deposit:', error);
+        console.error('[SPRIBE][DEPOSIT][EXCEPTION]', error, req.body);
         return res.status(500).json({
             code: 500,
             message: 'Internal error',
@@ -250,51 +198,37 @@ export const spribeDeposit = async (req, res) => {
 };
 
 export const spribeWithdraw = async (req, res) => {
-    console.log(req.body,"spribeWithdraw");
-
+    console.log('[SPRIBE][WITHDRAW] Incoming:', req.body);
     const {
         user_id, currency, amount, provider, provider_tx_id, game, action, action_id, session_token, platform
     } = req.body;
-
     try {
-        // Find the user in the database using the provided user_id
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
-
-        // Check if user exists
         if (!userRows.length) {
+            console.error(`[SPRIBE][WITHDRAW][ERROR] User not found for id_user: ${user_id}`);
             return res.status(200).json({
                 code: 401,
                 message: 'User token is invalid',
             });
         }
-
         const user = userRows[0];
         const old_balance = Number(user.money * 1000);
-
-        // Check if user has sufficient funds
         if (old_balance < amount) {
+            console.error(`[SPRIBE][WITHDRAW][ERROR] Insufficient funds for user_id: ${user_id}, required: ${amount}, available: ${old_balance}`);
             return res.status(200).json({
                 code: 402,
                 message: 'Insufficient funds',
             });
         }
-
         const new_balance = Number(old_balance) + Number(amount);
-
-        // Update the user's balance
         await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [(new_balance / 1000), user_id]);
-
-        // Generate a unique operator transaction ID
         const operator_tx_id = `OP_TX_${Date.now()}`;
-
-        // Record the withdrawal transaction in the database
         await connection.query('INSERT INTO spribetransaction (id_user,type, phone, name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, withdrawal_amount, game, action, action_id, session_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)', [
             user_id, 1, user.phone, user.name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, amount, game, action, action_id, session_token
         ]);
-
         const successResponse = {
             code: 200,
-            message: "ok",
+            message: 'ok',
             data: {
                 user_id,
                 operator_tx_id,
@@ -305,10 +239,10 @@ export const spribeWithdraw = async (req, res) => {
                 currency
             }
         };
-
+        console.log('[SPRIBE][WITHDRAW] Success:', successResponse);
         return res.status(200).json(successResponse);
     } catch (error) {
-        console.error('Error processing withdrawal:', error);
+        console.error('[SPRIBE][WITHDRAW][EXCEPTION]', error, req.body);
         return res.status(200).json({
             code: 500,
             message: 'Internal error',
@@ -317,57 +251,40 @@ export const spribeWithdraw = async (req, res) => {
 };
 
 export const spribeRollback = async (req, res) => {
-    console.log(req.body, "spribeRollback");
-
+    console.log('[SPRIBE][ROLLBACK] Incoming:', req.body);
     const {
         user_id, amount, provider, rollback_provider_tx_id, provider_tx_id, game, session_token, action, action_id
     } = req.body;
-
     try {
-        // Check if the transaction ID is already processed
         const [existingTransaction] = await connection.query('SELECT * FROM spribetransaction WHERE provider_tx_id = ?', [rollback_provider_tx_id]);
-
         if (!existingTransaction.length) {
-            console.log("Transaction not found")
+            console.error(`[SPRIBE][ROLLBACK][ERROR] Transaction not found for rollback_provider_tx_id: ${rollback_provider_tx_id}`);
             return res.status(200).json({
                 code: 408,
-                message: "Transaction not found",
+                message: 'Transaction not found',
             });
         }
-        console.log("Transaction found")
         const transaction = existingTransaction[0];
         const user_id = transaction.id_user;
-        
-        // Get current user balance from database instead of using transaction's new_balance
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
-
         if (!userRows.length) {
-            console.log("first")
+            console.error(`[SPRIBE][ROLLBACK][ERROR] User not found for id_user: ${user_id}`);
             return res.status(200).json({
                 code: 401,
                 message: 'User token is invalid',
             });
         }
-
         const user = userRows[0];
-        const current_balance = Number(user.money * 1000); // Convert to same scale as transaction amounts
+        const current_balance = Number(user.money * 1000);
         const rollback_amount = Number(amount);
         const new_balance = current_balance + rollback_amount;
-
-        console.log("current_balance", current_balance)
-        console.log("rollback_amount", rollback_amount)
-        console.log("new_balance", new_balance)
-
-        // Update the user's balance to reflect the rollback (convert back to user's scale)
         await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [(new_balance / 1000), user_id]);
-        console.log("first2")
-        // Check for duplicate rollback using the provider_tx_id
         const [duplicateTransaction] = await connection.query('SELECT * FROM spribetransaction WHERE provider_tx_id = ?', [provider_tx_id]);
-
         if (duplicateTransaction.length) {
+            console.warn(`[SPRIBE][ROLLBACK][DUPLICATE] provider_tx_id: ${provider_tx_id}`);
             const duplicateResponse = {
                 code: 409,
-                message: "Duplicate transaction",
+                message: 'Duplicate transaction',
                 data: {
                     user_id,
                     operator_tx_id: duplicateTransaction[0].operator_tx_id,
@@ -380,18 +297,13 @@ export const spribeRollback = async (req, res) => {
             };
             return res.status(200).json(duplicateResponse);
         }
-
-        // Generate a unique operator transaction ID for the rollback
         const operator_tx_id = `OP_TX_${Date.now()}`;
-
-        // Record the rollback transaction in the database
         await connection.query('INSERT INTO spribetransaction (id_user, phone, name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, withdrawal_amount, game, action, action_id, session_token, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-            user_id, user.phone, user.name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, transaction.currency, amount, game, action, action_id, session_token, 2 // type 2 for rollback
+            user_id, user.phone, user.name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, transaction.currency, amount, game, action, action_id, session_token, 2
         ]);
-
         const successResponse = {
             code: 200,
-            message: "Success",
+            message: 'Success',
             data: {
                 user_id,
                 operator_tx_id,
@@ -402,10 +314,10 @@ export const spribeRollback = async (req, res) => {
                 currency: transaction.currency
             }
         };
-
+        console.log('[SPRIBE][ROLLBACK] Success:', successResponse);
         return res.status(200).json(successResponse);
     } catch (error) {
-        console.error('Error processing rollback:', error);
+        console.error('[SPRIBE][ROLLBACK][EXCEPTION]', error, req.body);
         return res.status(200).json({
             code: 500,
             message: 'Internal error',
