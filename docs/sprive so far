@@ -1,0 +1,137 @@
+Let's break down your request into clear, actionable parts:
+
+---
+
+## 1. **What Has the Provider (Spribe) Given You?**
+
+**A. Credentials & URLs**
+- **Launch URL:**  
+  `https://dev-test.spribe.io/games/launch/{game}`  
+  (For launching games in staging)
+- **Game API URL:**  
+  `https://secure-ga.staging.spribe.io/v3`  
+  (For wallet/balance/bet/withdraw API calls)
+- **Game Details URL:**  
+  `https://games-info.staging.spribe.dev`
+- **Demo URL:**  
+  `https://demo.spribe.io/launch/{game}?currency=UAH&lang=EN&return_url=https://spribe.co`
+- **Operator Key:**  
+  `75clubgames`
+- **Secret Token:**  
+  `8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC`
+- **Supported Currencies:**  
+  `USD, INR`
+- **Supported Games:**  
+  aviator, balloon, dice, fortune-wheel, goal, hi-lo, hotline, keno, mines, mini-roulette, multikeno, plinko
+- **Their IPs (for whitelisting):**  
+  194.36.47.153, 194.36.47.152, 194.36.47.150, 3.255.67.141, 52.30.236.39, 54.78.240.177
+- **Your callback endpoint:**  
+  `https://75club.games/api/callback/spribe`
+- **Support Email:**  
+  support@spribe.co
+
+---
+
+## 2. **How to Properly Test Spribe Integration**
+
+**A. Whitelist Their IPs**  
+Make sure your backend (and firewall) allows incoming requests from the above IPs.
+
+**B. Use the Staging URLs**  
+- For launching games, use the **staging launch URL**.
+- For API calls (wallet, bet, withdraw, etc.), use the **staging Game API URL**.
+
+**C. Use Provided Credentials**  
+- Use the `operator_key` and `secret_token` in your requests and signature generation.
+
+**D. Implement Security Headers**  
+Every API request (from you to Spribe, and from Spribe to you) must include:
+- `X-Spribe-Client-ID` (your operator key)
+- `X-Spribe-Client-TS` (current UTC timestamp, seconds since epoch)
+- `X-Spribe-Client-Signature` (HMAC SHA256 signature, see below)
+
+**E. Signature Generation**  
+- Concatenate:  
+  `timestamp + path_with_query + body`  
+  (body is only for POST/PUT, not for GET/DELETE)
+- HMAC SHA256 with your `secret_token` as the key.
+- Hex encode the result.
+
+**F. Callback Endpoint**  
+- Spribe will POST to your `/api/callback/spribe` endpoint for wallet actions (bet, withdraw, rollback, etc.).
+- You must validate their signature and process the request.
+
+**G. Test Flow**
+1. Launch a game using the launch URL (with correct params).
+2. Play the game in the UI.
+3. When a bet/withdraw happens, Spribe will call your callback.
+4. Your backend should process the request, update balances, and respond.
+5. Spribe/game UI will update accordingly.
+
+---
+
+## 3. **What to Check in Your Current Setup**
+
+### **A. Spribe Controller/Implementation**
+- **Do you have a controller/route for `/api/callback/spribe`?**
+- **Does it validate the security headers and signature?**
+- **Does it map Spribe's actions (bet, withdraw, rollback) to your wallet logic?**
+- **Does it respond with the correct structure and HTTP 200?**
+- **Do you have a launch endpoint that generates the correct launch URL for the frontend?**
+- **Are you using the correct operator key and secret for signature generation?**
+- **Are you logging all incoming/outgoing requests for debugging?**
+
+### **B. Common Issues to Watch For**
+- **Signature mismatch:**  
+  Most common cause of integration failure. Double-check your signature logic matches their docs.
+- **Wrong callback URL:**  
+  Make sure Spribe is calling the correct endpoint, and you are listening on it.
+- **Firewall/IP whitelisting:**  
+  If you block their IPs, you won't receive callbacks.
+- **Currency/game mismatch:**  
+  Only use supported currencies/games.
+- **Incorrect response format:**  
+  Always respond with HTTP 200 and the required JSON structure.
+
+---
+
+## 4. **How to Test Spribe Integration**
+
+- **Step 1:** Whitelist their IPs.
+- **Step 2:** Set up your `/api/callback/spribe` endpoint.
+- **Step 3:** Implement signature validation.
+- **Step 4:** Launch a game using the staging launch URL.
+- **Step 5:** Play the game, trigger wallet actions.
+- **Step 6:** Check your backend logs for incoming requests from Spribe.
+- **Step 7:** Ensure your backend processes the request and responds correctly.
+- **Step 8:** Confirm the game UI updates as expected.
+
+---
+
+## 5. **Summary Table of Key URLs**
+
+| Purpose                | URL/Value                                               |
+|------------------------|--------------------------------------------------------|
+| Game Launch (staging)  | `https://dev-test.spribe.io/games/launch/{game}`       |
+| Game API (wallet etc.) | `https://secure-ga.staging.spribe.io/v3`               |
+| Game Details           | `https://games-info.staging.spribe.dev`                |
+| Demo                   | `https://demo.spribe.io/launch/{game}?...`             |
+| Callback (your side)   | `https://75club.games/api/callback/spribe`             |
+| Operator Key           | `75clubgames`                                          |
+| Secret Token           | `8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC`                     |
+| Supported Currencies   | USD, INR                                               |
+| Supported Games        | aviator, balloon, dice, fortune-wheel, ...             |
+| Their IPs              | 194.36.47.153, 194.36.47.152, ...                      |
+
+---
+
+## 6. **Next Steps**
+
+- **Review your Spribe controller and callback implementation.**
+- **Check for signature validation and correct mapping of actions.**
+- **Test the full flow using the staging environment.**
+- **Log all requests/responses for debugging.**
+
+---
+
+**If you want, I can review your actual Spribe controller code and point out what looks right/wrong, or provide a template for a robust integration. Just let me know!**

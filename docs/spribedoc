@@ -1,0 +1,1070 @@
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Securing API Requests
+
+To maintain secure and verified communication between systems, all requests made between our API and operators must adhere to the following security requirements. The specifics below outline how requests should be validated, whether initiated by the API or the operator.
+
+Security Requirements for API Requests
+
+For requests originating from our API to operators, operators should validate each incoming request by checking the following headers. Similarly, operators should add these headers to requests they initiate to our API.
+
+Required Headers for Request Validation
+
+Each secured request must contain the following headers:
+
+X-Spribe-Client-ID: A unique identifier for the operator, provided by us.
+
+X-Spribe-Client-TS: A timestamp in UTC, representing seconds since the Unix Epoch.
+
+X-Spribe-Client-Signature: A hashed signature that verifies the integrity of the request parameters.
+
+Generating the X-Spribe-Client-Signature Header
+
+The X-Spribe-Client-Signature ensures request authenticity by following these steps to create a signature:
+
+Concatenate the following values:
+
+Timestamp (X-Spribe-Client-TS): Timestamp at the time of the request.
+
+Request URI: URL path with ordered and encoded query parameters (without the domain).
+
+Request Body: For POST and PUT requests, include the request body as a string. Omit this for GET and DELETE requests.
+
+Hash the concatenated string: Use the SHA256 HMAC algorithm, with the operator's Client Secret as the key, to hash the concatenated string.
+
+Validation Process
+
+Upon receiving a request, the server (operator's or ours) should validate the X-Spribe-Client-Signature by:
+
+Retrieving the Client Secret based on X-Spribe-Client-ID.
+
+Repeating the signature creation process using the headers and parameters.
+
+Comparing the generated signature to the received X-Spribe-Client-Signature header. A match indicates the request is verified.
+
+Example Implementation for Incoming API Requests
+
+Below is an example illustrating how to implement secure request handling on the operator's side or ours:
+
+@PostMapping(path = "/secure-request")public ResponseEntity<Void> secureRequest(@RequestBody final byte[] body,
+
+                                          @RequestHeader(name = "X-Spribe-Client-ID") final String clientId,
+
+                                          @RequestHeader(name = "X-Spribe-Client-TS") final long time,
+
+                                          @RequestHeader(name = "X-Spribe-Client-Signature") final String signature,
+
+                                          final HttpServletRequest request) {
+
+    // Validate headers and timestamp expiration
+
+    final var clientSecret = getClientSecretFromRepository(clientId); // Retrieve Client Secret
+
+    final var queryString = request.getQueryString();
+
+    final var path = request.getRequestURI() + (queryString == null || "".equals(queryString) ? "" : "?" + request.getQueryString());
+
+    final var calculatedSignature = createSignature(time, path, body, clientSecret);
+
+     
+
+    if (!signature.equalsIgnoreCase(calculatedSignature)) {
+
+        throw new SecurityException("Signature mismatch.");
+
+    }
+
+}
+
+ public static String createSignature(final long time, final String path, final byte[] body, final String clientSecret) {
+
+    try {
+
+        Mac sha256Hmac = Mac.getInstance("HmacSHA256");
+
+        sha256Hmac.init(new SecretKeySpec(clientSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+
+        sha256Hmac.update((time + path).getBytes(StandardCharsets.UTF_8));
+
+         
+
+        byte[] bytes = body == null ? sha256Hmac.doFinal() : sha256Hmac.doFinal(body);
+
+        return HexFormat.of().formatHex(bytes);
+
+    } catch (Exception e) {
+
+        throw new SecurityException("Error creating signature.", e);
+
+    }
+
+}
+
+This structure clarifies that both the operator and the API system are responsible for including and validating security headers on their outgoing and incoming requests, ensuring consistent security standards across all communications.
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Reality check
+
+A Reality Check gives to the players the option of setting a time frequency at which you will receive an notification about the length of time you have spent in game.
+
+To stop the game and show the reality check notification, the API should on withdraw method answer with the error code 412. In the window will be shown the message from the response.e.g { "code": 412, "message": "You have been playing for 60 minutes" }. In message should be information about the length of the time in game. Besides message, in the window following buttons will be presented: stop , continue & account history. When player presses the button stop or continue the game calls playerNotificationCallback method. When player presses the button account history, the game opens the link of the game history of players, which was presented in launch URL;
+
+
+
+Important!
+
+Currently reality check is available only for ​AVIATOR
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Player notification
+
+This method sends the notification request about the action of the player in game. Available only for ​AVIATOR
+
+Path: /playerNotificationCallback
+
+Request Method: POST
+
+Content-Type: application/json; charset=utf-8
+
+Headers: X-Spribe-Client-ID, X-Spribe-Client-TS, X-Spribe-Client-Signature
+
+Request
+
+Parameters
+
+Sample
+
+ParameterTypeDescriptionuser_idstringPlayer IDgamestring [game enum]Identifies specific game. (game identificator)session_tokenstringGame session tokenplatformstring [platform enum]Enum: mobiledesktopnotificationstringThe type of notification Enum: reality_checknotification_dataobjectThe necessary data object for notificationactionstringEnum: STOPCONTINUE
+
+Response
+
+Parameters
+
+Success sample
+
+ParameterTypeDescriptioncodeinteger [enum]Response codemessagestringResponse any logical message
+
+Important!
+
+Each request sent to the API requires validation using specific security headers. For details on implementing this, refer to Securing API Requests.
+
+Reality check is available only for the game ​AVIATOR
+
+Possible codes
+
+200 - Success
+
+413 - Invalid Client-Signature
+
+If code is 200 - operator should always return parameter data with information; HTTP status code should always be 200
+
+
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Rollback
+
+This method rollbacks transaction with provider transaction ID.
+
+Path: /rollback
+
+Request Method: POST
+
+Content-Type: application/json; charset=utf-8
+
+Headers: X-Spribe-Client-ID, X-Spribe-Client-TS, X-Spribe-Client-Signature
+
+Request
+
+Parameters
+
+Sample
+
+ParameterTypeDescriptionuser_idstringPlayer IDamountlongAmount of money that should be rollbacked.providerstringGame providerrollback_provider_tx_idstringProvider transaction ID which should be rollbackedprovider_tx_idstringThe transaction ID assigned by providergamestring [game enum]Identifies specific game. (game identificator)session_tokenstringGame session tokenactionstring [action enum]Enum: betrainaction_idstringID of action in game, which depends on game and “action”
+
+Response
+
+Parameters
+
+Success sample
+
+Duplication sample
+
+Error sample
+
+ParameterTypeDescriptioncodeinteger [enum]Response codemessagestringResponse any logical messagedataobjectonly needed when code 200 or 409user_idstringID of a player on the operators sidecurrencystring [currency enum]Transaction currencyoperator_tx_idstringTransaction ID on side of operatorproviderstringGame providerprovider_tx_idstringThe transaction ID assigned by providerold_balancelongBalance before depositnew_balancelongBalance after deposit
+
+Important!
+
+Each request sent to the API requires validation using specific security headers. For details on implementing this, refer to Securing API Requests.
+
+If request gets on timeout, or an internal error, game sends same transaction, with same provider_tx_id again. If transaction is already processed on the side of the operator, operator identifies duplication and adds in answer duplication error code with processed information of transaction. The Transaction should be unique with ​ provider_tx_id​.
+
+Amount/Balance example
+
+Amount/Balance fiat is represented in units(1$ = 1000 unit) and always is an integer value. For example: with 5.32 USD and the value will be 5.32 * 10^3 = 5320
+
+Amount/Balance crypto is represented in units(1BTC = 100000000 unit) and always is an integer value. For example: with 0.0532 BTC and the value will be 0.0532 * 10^8 = 5320000
+
+Possible codes
+
+200 - Success
+
+401 - User token is invalid
+
+403 - User token is expired
+
+408 - Transaction does not found
+
+409 - Duplicate transaction
+
+413 - Invalid Client-Signature
+
+500 - Internal error
+
+If code is 200 - operator should always return parameter data with information; HTTP status code should always be 200
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Deposit
+
+This method makes a deposit into players account. The method sends transaction and returns transaction ID, player balance and status of transaction.
+
+Path: /deposit
+
+Request Method: POST
+
+Content-Type: application/json; charset=utf-8
+
+Headers: X-Spribe-Client-ID, X-Spribe-Client-TS, X-Spribe-Client-Signature
+
+Request
+
+Parameters
+
+Sample
+
+ParameterTypeDescriptionuser_idstringPlayer IDcurrencystring [currency enum]Bet currency (currency code)amountlongAmount that should be transferred to players balanceproviderstringGame providerprovider_tx_idstringThe transaction ID assigned by providergamestring [game enum]Identifies specific game. (game identificator)actionstringType of action: betrainfreebetrainfreebetpromofreebetchallengefreebetaction_idstringID of action in game, which depends on game and “action”session_tokenstringGame session tokenplatformstring [platform enum]Enum: mobiledesktopwithdraw_provider_tx_id optionalstringProvider id of withdrawn transaction, to which belongs current deposit transaction.
+
+Response
+
+Parameters
+
+Success sample
+
+Duplication sample
+
+Error sample
+
+ParameterTypeDescriptioncodeinteger [enum]Response codemessagestringResponse any logical messagedataobjectonly needed when code 200 or 409user_idstringID of a player on the operators sideoperator_tx_idstringUnique transaction ID on side of operatorproviderstringGame providerprovider_tx_idstringThe transaction ID received by providerold_balancelongBalance before depositnew_balancelongBalance after depositcurrencystring [currency enum]Transaction currency
+
+Important!
+
+Each request sent to the API requires validation using specific security headers. For details on implementing this, refer to Securing API Requests.
+
+If request gets on timeout, or an internal error, game sends same transaction, with same provider_tx_id again. If transaction is already processed on the side of the operator, operator identifies duplication and adds in answer duplication error code with processed information of transaction. The Transaction should be unique with ​ provider_tx_id​.
+
+Amount/Balance example
+
+Amount/Balance fiat is represented in units(1$ = 1000 unit) and always is an integer value. For example: with 5.32 USD and the value will be 5.32 * 10^3 = 5320
+
+Amount/Balance crypto is represented in units(1BTC = 100000000 unit) and always is an integer value. For example: with 0.0532 BTC and the value will be 0.0532 * 10^8 = 5320000
+
+Possible codes
+
+200 - Success
+
+401 - User token is invalid
+
+403 - User token is expired
+
+409 - Duplicate transaction
+
+413 - Invalid Client-Signature
+
+500 - Internal error
+
+If code is 200 - operator should always return parameter data with information; HTTP status code should always be 200
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Withdraw
+
+This method withdraws money from player balance. Method sends one transaction and returns transaction ID, player balance and status of transaction.
+
+Path: /withdraw
+
+Request Method: POST
+
+Content-Type: application/json; charset=utf-8
+
+Headers: X-Spribe-Client-ID, X-Spribe-Client-TS, X-Spribe-Client-Signature
+
+Request
+
+Parameters
+
+Sample
+
+ParameterTypeDescriptionuser_idstringPlayer ID on operator sidecurrencystring [currency enum]Bet currency (currency code)amountlongAmount that should be transferred from players balanceproviderstringGame providerprovider_tx_idstringThe transaction ID assigned by providergamestring [game enum]Identifies specific game. (game identificator)actionstring [action enum]Enum: betrainaction_idstringID of action in game, which depends on game and “action”session_tokenstringGame session tokenplatformstring [platform enum]Enum: mobiledesktop
+
+Response
+
+Parameters
+
+Success sample
+
+Duplication sample
+
+Error sample
+
+ParameterTypeDescriptioncodeinteger [enum]Response codemessagestringResponse any logical messagedataobjectonly needed when code 200 or 409user_idstringID of a player on the operators sideoperator_tx_idstringUnique transaction ID on side of operatorproviderstringGame providerprovider_tx_idstringThe transaction ID received by providerold_balancelongBalance before depositnew_balancelongBalance after depositcurrencystring [currency enum]Transaction currency
+
+Important!
+
+Each request sent to the API requires validation using specific security headers. For details on implementing this, refer to Securing API Requests.
+
+If request is timed out, game sends same transaction, with same ​ provider_tx_id again. if transaction is already processed on the side of the operator, operator identifies duplication and adds in answer duplication error code with already processed information of transaction. The Transaction should be unique with ​ provider_tx_id​.
+
+If operator processed transaction successfully, but after this, provider can't process it in the game, provider will rollback transaction with rollback method.
+
+Amount/Balance example
+
+Amount/Balance fiat is represented in units(1$ = 1000 unit) and always is an integer value. For example: with 5.32 USD and the value will be 5.32 * 10^3 = 5320
+
+Amount/Balance crypto is represented in units(1BTC = 100000000 unit) and always is an integer value. For example: with 0.0532 BTC and the value will be 0.0532 * 10^8 = 5320000
+
+Possible codes
+
+200 - Success
+
+401 - User token is invalid
+
+402 - Insufficient fund
+
+403 - User token is expired
+
+405 - Internal error with no retry
+
+409 - Duplicate transaction
+
+412 - For stop the game and show the reality check window. In the window will shown the message from the response. (read more)
+
+413 - Invalid Client-Signature
+
+500 - Internal error
+
+If code is 200 - operator should always return parameter data with information; HTTP status code should always be 200
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Player information
+
+This method retrieves player information
+
+Path: /info
+
+Request Method: POST
+
+Content-Type: application/json; charset=utf-8
+
+Headers: X-Spribe-Client-ID, X-Spribe-Client-TS, X-Spribe-Client-Signature
+
+Request
+
+Parameters
+
+Sample
+
+ParameterTypeDescriptionuser_idstringPlayer ID on operator sidesession_tokenstringToken generated by provider for current game sessioncurrencystring [currency enum]Game currency. (currency code)
+
+Response
+
+Parameters
+
+Success sample
+
+Error sample
+
+ParameterTypeDescriptioncodeinteger [enum]Response codemessagestringResponse any logical messagedataobjectonly needed when code 200user_idstringID of player on operator sideusernamestringName of playerbalancelongCurrent balance of player in specified currency.currencystring [currency enum]Currency of player
+
+Important!
+
+Each request sent to the API requires validation using specific security headers. For details on implementing this, refer to Securing API Requests.
+
+Possible codes
+
+200 - Success
+
+401 - User token is invalid
+
+403 - User token is expired
+
+413 - Invalid Client-Signature
+
+500 - Internal error
+
+If code is 200 - operator should always return parameter data with information; HTTP status code should always be 200
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Authentication
+
+This is a method that consists in requesting an authentication for a player who is trying to launch the game
+
+Path: /auth
+
+Request Method: POST
+
+Content-Type: application/json; charset=utf-8
+
+Headers: X-Spribe-Client-ID, X-Spribe-Client-TS, X-Spribe-Client-Signature
+
+Request
+
+Parameters
+
+Sample
+
+ParameterTypeDescriptionuser_tokenstringToken generated by operator during game launch processsession_tokenstringToken generated by provider for current game sessionplatformstring [platform enum]Enum: mobiledesktopcurrencystring [currency enum]Game currency. (currency code)
+
+Response
+
+Parameters
+
+Success sample
+
+Error sample
+
+ParameterTypeDescriptioncodeinteger [enum]Response codemessagestringResponse any logical messagedataobjectonly needed when code 200user_idstringID of player on operator sideusernamestringName of playerbalancelongCurrent balance of player in specified currency.currencystring [currency enum]Currency of player
+
+Important!
+
+Each request sent to the API requires validation using specific security headers. For details on implementing this, refer to Securing API Requests.
+
+Amount/Balance example
+
+Amount/Balance fiat is represented in units(1$ = 1000 unit) and always is an integer value. For example: with 5.32 USD and the value will be 5.32 * 10^3 = 5320
+
+Amount/Balance crypto is represented in units(1BTC = 100000000 unit) and always is an integer value. For example: with 0.0532 BTC and the value will be 0.0532 * 10^8 = 5320000
+
+Possible codes
+
+200 - Success
+
+401 - User token is invalid
+
+403 - User token is expired
+
+413 - Invalid Client-Signature
+
+500 - Internal error
+
+If code is 200 - operator should always return parameter data with information; HTTP status code should always be 200
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Specifications
+
+Games
+
+NameProvider keyGame identificatorAviatorspribe_aviatoraviatorDicespribe_cryptodiceGoalspribe_cryptogoalPlinkospribe_cryptoplinkoMinesspribe_cryptominesHi Lospribe_cryptohi-loKenospribe_cryptokenoMini Roulettespribe_cryptomini-rouletteHotlinespribe_cryptohotlineBalloonspribe_cryptoballoonKeno 80spribe_kenomultikenoTraderspribe_tradertraderCrystal Fallspribe_slotscrystal-fallNeo Vegasspribe_slotsneo-vegasGates of Egyptspribe_slotsgates-of-egypt
+
+Available Currencies
+
+fiat
+
+crypto
+
+CodeNameAEDUnited Arab Emirates DirhamAFNAfghanistan AfghaniALLAlbanian LekAMDArmenian DramANGNetherlands Antillean GuilderAOAAngolan KwanzaARSArgentine PesoAUDAustralian DollarAWGAruban FlorinAZNAzerbaijan ManatBAMBosnian Convertible MarkBBDBarbados DollarBDTBangladeshi TakaBGNBulgarian LevBHDBahraini DinarBIFBurundian FrancBMDBermudian DollarBNDBrunei DollarBOBBolivian BolivianosBRLBrazilian RealBSDBahamian DollarBTNBhutanese NgultrumBWPBotswana PulaBYNBelarusian RubleBYRBelarusian RubleBZDBelize DollarCADCanadian DollarCDFCongolese FrancCHFSwiss FrankCLPChilean PesoCNYChinese Yuan RenminbiCOPColombian PesoCRCCosta Rican ColonCUCCuban Convertible PesoCUPCuban PesoCVECape Verdean EscudoCZKCzech KorunaDJFDjiboutian FrancDKKDanish KroneDOPDominican PesoDZDAlgerian DinarEGPEgyptian PoundERNEritrean NakfaETBEthiopian BirrEUREuropean EuroFJDFijian DollarFKPFalkland Islands PoundGBPBritish PoundGELGeorgian LariGHSGhanaian CediGIPGibraltar PoundGMDGambian DalasiGNFGuinean FrancGTQGuatemalan QuetzalGYDGuyanese DollarHKDHong Kong DollarHNLHonduran LempiraHRKCroatian KunaHTGHaitian GourdeHUFHungarian ForintIDRIndonesian RupiahILSIsraeli New ShekelINRIndian RupeeIQDIraqi DinarISKIcelandic KronaJMDJamaican DollarJODJordanian DinarJPYJapanese YenKESKenyan ShillingKGSKyrgyzstani SomKHRCambodian RielKMFComorian FrancKPWNorth Korean WonKRWSouth Korean WonKWDThe Kuwaiti DinarKYDCaymanian DollarKZTKazakhstani TengeCodeNameLAKLao KipLBPLebanese PoundLEKAlbanian lekLKRSri Lankan RupeeLRDLiberian DollarLSLLesotho LotiLYDLibyan DinarMADMoroccan DirhamMDLMoldovan LeuMGAMalagasy AriaryMKDMacedonian DenarMMKBurmese KyatsMNTMongolian TögrögMOPMacanese PatacaMRUMauritanian OuguiyaMURMauritian RupeeMVRMaldivian RufiyaaMWKMalawian KwachaMXNMexican PesoMYRMalaysian RinggitMZNMozambican MeticalNADNamibian DollarNGNNigerian NairaNIONicaraguan CordobaNOKNorwegian KroneNPRNepalese RupeeNZDNew Zealand DollarOMROmani RialPABPanamanian BalboaPENPeruvian SolPGKPapua New Guinean KinaPHPPhilippine PesoPKRPakistani RupeePLNPolish ZłotyPYGParaguayan GuaraníQARQatari RiyalRONRomanian LeuRSDSerbian DinarRWFRwandan FrancSARSaudi RiyalSBDSolomon Islands DollarSCRSeychellois RupeeSDGSudanese PoundSEKSwedish KronaSGDSingapore DollarSLESierra Leonean LeoneSOSSomali ShillingSRDSuriname DollarSYPSyrian PoundSZLSwazi LilangeniTHBThai BahtTJSTajikistani SomoniTMTTurkmenistan ManatTNDTunisian DinarTOPTonga PaangaTRYTurkish LiraTTDTrinidad and Tobago DollarTWDNew Taiwan DollarTZSTanzanian ShillingUAHUkrainian HryvniaUGXUgandan ShillingUSDUnited States DollarUYUUruguayan PesoUZSUzbekistani SomVEFVenezuelan BolívarVESVenezuelan BolivarVNDVietnamese DongVUVVanuatu VatuWSTSamoan TālāXAFCentral African CFA FrancXCDEastern Caribbean DollarXOFWest African CFA FrancXPFCFP FrancYERYemeni RialZARSouth African RandZMWZambian KwachaZWLZimbabwean Dollar
+
+Available Languages
+
+aviator
+
+turbo
+
+keno 80
+
+Lang codeNameazAzerbaijanibgBulgarianbnBrunei Darussalam (Bengali)csCzechdeGermanyelGreekenEnglishesSpanishfaFarsi/PersianfiFinnishfrFrenchhiHindihrCroatianhuHungarianhyArmenianidIndonesianitItalianjaJapanesekaGeorgiankoKoreanltLithuanianlvLatviannlDutchplPolishptPortuguesept-brPortuguese (Brazil)roRomanianruRussiansqAlbaniansrSerbiansvSwedishswSwahilithThaitlTagalogtrTurkishukUkrainianuzUzbekviVietnamesezhChinese Simplifiedzh-twChinese Traditional
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+Changelog
+
+Version 1.9.0
+
+Released on November 11, 2024
+
+Added required security headers and signature validation: All public API requests now require specific headers for security validation.
+
+Add game Starline.
+
+Add game Trader.
+
+Add slot games Crystal Fall, Neo Vegas, Gates of Egypt.
+
+Version 1.8.0
+
+Released on October 25, 2023
+
+Add optional parameter "location" in launch URL for Poker.
+
+Version 1.7.0
+
+Released on October 20, 2023
+
+Add game "Keno 80". Supported languages: English, Georgian, Portuguese, Portuguese (Brazil), Russian.
+
+Add new fiat currencies: MRU, SLE, ZWL.
+
+Add new cryptocurrencies: BSV, FTN, NEO, SHIB.
+
+Remove fiat currencies: IRR, IRT.
+
+Add new languages for Aviator: Chinese Traditional, Hungarian, Indonesian, Swahili, Tagalog.
+
+Add new languages for Turbo Games: Chinese Simplified, Chinese Traditional, French, Hindi, Hungarian, Indonesian, Italian, Japanese, Romanian, Swahili, Thai, Turkish.
+
+Add new languages for Poker: Finnish, French, German, Italian, Portuguese, Portuguese (Brazilian), Spanish.
+
+Update Content-Type for requests.
+
+Change type for parameter: action_id from integer to string.
+
+Add a new action challengefreebet for deposit request.
+
+Version 1.6.0
+
+Released on October 18, 2022
+
+Add turbo game "hotline".
+
+Version 1.5.0
+
+Released on September 05, 2022
+
+Games Integrations:
+
+Add irc_duration and irc_elapsed URL parameters.
+
+Add 405 error code for withdraw.
+
+Add new fiat currencies: BRL, ARS, MAD, AFN, ANG, AOA, AWG, BBD, BHD, BIF, BND, BSD, BTN, BWP, BYR, BZD, CRC, CUC, CUP, CVE, DJF, DOP, DZD, EGP, ERN, ETB, FJD, FKP, GIP, GMD, GNF, GTQ, GYD, HNL, HTG, JMD, JOD, KHR, KMF, KPW, LAK, LBP, LRD, LSL, LYD, MGA, MOP, MRO, MUR, MVR, MWK, MZN, NIO, NPR, OMR, PAB, PGK, PKR, QAR, RWF, SBD, SCR, SDG, SLL, SOS, SRD, SSP, SYP, SZL, TJS, TOP, TTD, VES, VUV, WST, XCD, XPF, YER, ZWD.
+
+Add cryptocurrencies: ADA, AMS, BCH, BNB, BTC, BTCV, DAI, DASH, DOGE, EOS, ETH, GUSD, LINK, LTC, mBCH, mBTC, mBTCV, mDASH, mDOGE, mEOS, mETH, mLTC, mTRX, mXMR, mXRP, PAX, PAXG, SOC, TRX, TUSD, uBTC, uBTCV, uETH, uLTC, USDC, USDT, XAUT, XMR, XRP.
+
+Add new languages for Aviator: Brunei Darussalam, Czech, Germany, Greek, Finnish, French, Lithuanian, Latvian, Dutch, Polish, Portuguese, Romanian.
+
+Release a new version of Turbo Games. Supported languages: English, Spanish, Armenian, Georgian, Korean, Portuguese (Brazil), Russian, Serbian, Ukrainian, Vietnamese.
+
+
+
+IFC:
+
+Add event "ifc.autoplay".
+
+Add cmd "ifc.stop.internal.reality.check".
+
+Add "additionalOperatorData" field for init and close events.
+
+Version 1.4.7
+
+Released on March 16, 2021
+
+Add new languages for Aviator: Azerbaijani, Spanish, Hindi, Portuguese (Brazil), Uzbek, Vietnamese, Chinese, Ukrainian, Japanese, Thai
+
+Add new languages for Crypto Games: Spanish, Hindi, Portuguese (Brazil), Vietnamese, Ukrainian, Japanese
+
+Remove languages from Crypto Games: Turkish, Italian, Bulgarian, Swedish, Croatian
+
+Version 1.4.6
+
+Released on November 09, 2020
+
+Add parameter "account_history_url" in launch URL for the reality check notification
+
+Add "playerNotificationCallback" method
+
+Add description for the reality check functionality
+
+Version 1.4.5
+
+Released on August 11, 2020
+
+Add new provider "spribe_poker" with the game "poker"
+
+Add new actions "spin", "tournament", "rakeback" for poker
+
+Remove "provider" requirement for the transaction duplication
+
+Add new error code "408" for the rollback method
+
+Version 1.4.4
+
+Released on June 30, 2020
+
+Add new currencies GHS, THB, RON, ARS, BOB, CZK, HRK, HUF, IDR, LEK, LKR, MKD, PYG, VEF, VND, ALL, ZMW, AED, BDT, BMD, CDF, ILS, ISK, KES, KYD, MMK, MNT, NAD, NGN, PHP, SAR, UGX, XAF, XOF
+
+Version 1.4.3
+
+Released on June 18, 2020
+
+Change type for parameters: provider_tx_id, withdraw_provider_tx_id and rollback_provider_tx_id from integer to string.
+
+Version 1.4.2
+
+Released on May 22, 2020
+
+Add new currencies KRW, CNY, IRR, IRT, HKD, CLP, MXN, PEN, CAD, SGD, AUD, DKK, JPY, MYR, NOK, SEK, ZAR, TWD, PLN, KWD, CHF, IQD, TND, TMT, COP, NZD, UYU, AZN, BYN, INR, KGS, MDL, TZS, UZS, BGN
+
+Add Swedish, Serbian, Kroatian, Korean and Farsi/Persian languages
+
+Version 1.4.1
+
+Released on February 11, 2020
+
+Add currencies RSD, BAM.
+
+Add Italian and Bulgarian languages
+
+Version 1.4.0
+
+Released on August 3, 2019
+
+Remove parameters from "Auth" method: session_token_expire_date, refresh_token, refresh_token_expire_date Remove "Refresh Token" method
+
+Add user_id and currency parameters in "Rollback" method
+
+Version 1.3.1
+
+Released on August 2, 2019
+
+Add action descriptions in "Withdraw" and "Deposit" methods
+
+Version 1.3.0
+
+Released on July 31, 2019
+
+Add action parameter values in "Deposit" method: "rainfreebet, "promofreebet"
+
+Remove action parameter value "rain" from "Deposit" method
+
+Version 1.2.0
+
+Released on July 15, 2019
+
+Add "user_id parameter in "Rollback" method
+
+Version 1.1.0
+
+Released on June 25, 2019
+
+Add session_token parameter in "Rollback" method
+
+Version 1.0.2
+
+Released on May 30, 2019
+
+Add timezone description for "date"
+
+Version 1.0.1
+
+Released on May 16, 2019
+
+Add "Withdraw" and "Deposit" methods descriptions
+
+Add "amount" and "balance" parameters description
+
+
+
+Games Integration API
+
+Games API
+
+IFC API
+
+GETTING STARTED
+
+Overview
+
+Specifications
+
+Changelog
+
+API REFERENCE
+
+Authentication
+
+Player info
+
+Withdraw
+
+Deposit
+
+Rollback
+
+Player notification optional
+
+INFO
+
+Reality check
+
+Securing API Requests
+
+SPRIBE Games Integration API (1.9.0)
+
+Game Launch Process
+
+To launch a game, online casino should generate launch link with appropriate parameters and open it in browser.
+
+Production
+
+Demo
+
+ParameterTypeDescriptiongamestring [game enum]Identifies specific game. (Game Identificator)userstringID of a player on the operators sidetokenstringThe one time token is a unique string generated by the operator, used for launch and authenticationcurrencystring [currency enum]Game currency (currency code)operatorstringoperator key namelang optionalstring [lang enum]Game interface languagereturn_url optionalstring [pattern url]URL for return from gameaccount_history_url optionalstring [pattern url]URL for the players bet history in the game menu and the reality check notificationirc_duration optionalinteger [seconds]Period to stop the game and show the reality check window.irc_elapsed optionalinteger [seconds]The elapsed time from the first period of the reality check.
+
+URL Structure
+
+https://{launch-url}/{game}?user={user}&token={token}&lang={lang}&currency={currency}&operator={operator}&return_url={return_url}

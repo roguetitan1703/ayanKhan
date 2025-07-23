@@ -1,0 +1,203 @@
+Website review part 2
+
+Dev Feedback
+Task divisions 
+
+
+
+Updates Required
+Update all the projects
+Add all the services 
+Add portfolios
+Use multinavs in the navbar
+Navbar design upgrade
+Multilinks hover uniformity
+Design the home page better
+Manages pages under core headings 4-5
+The header is consistent and good; but keep the design more professional, a better balance 
+The theme should be visible
+Animation on dark mode change
+Dark mode button floating on bottom left
+Scroll oriented
+Booking calender
+Pricing calculator logic
+Prices in rupees
+Scroll to top on page change
+SEO
+Quick qualification logic
+Content requirement check
+Slugging
+Dynamic Content Translation (ip based)
+
+Visual bugs
+https://dp-website-h1v9.vercel.app/resources
+Gaps above footer 
+Pixelated  logo
+Main hero section text not visible
+Main cta text not visible
+Links check
+Not Responsive
+Colour theme needs to be changed for light mode
+Social Proof component is un-scrollable when all cards are stacked up
+The Header looks to bulky
+There are so many pages on the website that can be reduced by combining pages given that no more extra content is going to be added
+Improve homepage hero section add something interesting
+Buttons on many pages are not working
+Need to add some images or figures or diagrams in the website (so much text)
+Who we help page need a rework not good as compared to other pages
+How we work - Trust Signal section is imperfect
+Resources Page: How we think section needs improvement FAQs section can be redesigned in a better way
+Contact us: are we good fit section needs some response after the questions are answered
+Colours are not according to theme in contact us home ,why DELPAT
+Scroll of the website is too smooth
+Scroll Next page 
+Some buttons are not clickable 
+Navbar responsiveness Transparent sidebar
+Attractive content, 
+image video missing Map in home page 
+Overall page responsiveness 
+Lag in animation
+Navbar responsiveness - logo and menu items name 2.cards stacking on home & proof pages - stucks further scroll
+Cards on many pages - take time to get back to normal position after mouse leaves
+who we help - texts overflows in smaller screen
+Mobile drawer - transparent
+
+
+Core Tasks
+Content & Strategy Refinement:
+ Design the User Flow for the Pricing Page (e.g., Quiz -> Recommended Package -> CTA).
+ Reframe "Ask the founders" into a concrete plan for video testimonials and "Founder-Verified" case studies.
+ Create a Basic SEO Plan (target keywords for each persona, content ideas for the Resources section).
+Technical & Operational Planning:
+ Plan for Analytics Setup (GA4, Hotjar).
+ Define the Client Portal Strategy (which tool to use, how to integrate it into the sales pitch).
+ Create a simple Website Maintenance Plan (who adds new projects and when).
+
+Code Review
+
+Separate file for interface definition
+No index file to import directly
+Too much of Bad code 
+Bad imports
+No use of next root imports
+No use of db in personas
+Csrf protection missing and header safe guarding (helmet)
+Api post routes protection missing
+
+
+Git and deployment Reviews
+Remove vercel deployment https://delpat-amdrbmuje-kaushiki-02s-projects.vercel.app
+Too much merge issues
+Less commits than expected
+Repo name change
+
+Phase 3
+Form submission db
+Newsletter
+Landing banners
+offers
+
+Deadline -> 26th Afternoon
+---
+
+## 1. **Theme & Visual Consistency**
+
+- **Task:** Audit and fix all color usage to match the defined palette-
+ **Task:** Standardize all typography (headlines: Manrope, body: Inter) and ensure font weights/sizes match the PRD.
+- **Task:** Remove any custom or inconsistent background gradients and use only the approved backgrounds consistently, .
+- **Task:** Ensure all icons are from the approved Feather Icons set and are visually consistent.
+
+---
+
+## 2. **Navigation & Layout**
+
+- **Task:** Redesign the header to be less bulky and fully responsive, with a solid background for the mobile drawer.
+- **Task:** Implement a sticky navbar that remains visible on scroll.
+- **Task:** Add multinav/multilink support if the content structure requires it; otherwise, keep navigation simple and clear.
+- **Task:** Remove or merge pages that have little or redundant content, as per the PRD’s page breakdown.
+
+---
+
+## 3. **Homepage**
+
+- **Task:** Redesign the hero section to include a visual element (image, video, or animation) and ensure the main CTA is always visible and clickable.
+- **Task:** Fix the Social Proof section so that all cards are scrollable or paginated and do not block further scrolling.
+- **Task:** Add an interactive GeoMap section as described in the PRD, or clearly mark it as a V2 feature if not feasible now.
+- **Task:** Ensure all homepage sections (Hero, SocialProof, ServicesGrid, FounderQuote, GeoMap, Testimonials, CTASection) are present and in the correct order.
+
+---
+
+## 4. **Section & Component Uniformity**
+
+- **Task:** Refactor all buttons, cards, inputs, and headings to use the shared UI components defined in `/components/ui`.
+- **Task:** Replace all native `<input>`, `<textarea>`, and `<a>` elements with the shared Input, TextArea, and Link components.
+- **Task:** Ensure all cards (project, service, testimonial, etc.) use a consistent Card component with uniform padding, border, and shadow.
+- **Task:** Remove any custom or one-off components that duplicate shared UI functionality.
+
+---
+
+## 5. **Content Completion & Accuracy**
+
+- **Task:** Update all project, service, and testimonial content to be current, accurate, and complete as per the PRD.
+- **Task:** Ensure all persona sections on "Who We Help" are present, with correct props and content define personas better than their current name, .
+- **Task:** Add missing images, diagrams, or figures to break up text-heavy sections (have text heavy sections first) , especially on the homepage and resources.
+- **Task:** Complete all FAQ, How We Think, and ToolsAndStack sections with real, relevant content.
+
+---
+
+## 6. **Feature Completion (from PRD/Feature Matrix)**
+
+- **Task:** Implement the Pricing Calculator logic and ensure it works with INR as an option.
+- **Task:** Add a booking calendar (e.g., Calendly embed) to the Contact page and at the end of the service funnel.
+- **Task:** Implement the Service Recommender quiz on the homepage or services page.
+- **Task:** Add client-side filtering to the Project Showcase section.
+- **Task:** Add a loading screen/progress bar for initial load.
+- **Task:** If not feasible now, clearly mark V2 features (blog/CMS, client portal, analytics dashboard, internationalization) as out of scope and remove any placeholder code.
+
+---
+
+## 7. **Responsiveness & Accessibility**
+
+- **Task:** Test every page and section on mobile, tablet, and desktop. Fix all overflow, alignment, and spacing issues.
+- **Task:** Ensure all interactive elements are keyboard accessible and have visible focus states.
+- **Task:** Implement `prefers-reduced-motion` for all major animations.
+- **Task:** Ensure all text has sufficient color contrast and is never obscured by backgrounds or images.
+
+---
+
+## 8. **Interactivity & Feedback**
+
+- **Task:** Fix all non-working or non-clickable buttons and links.
+- **Task:** Add user feedback for all forms (success, error, loading states).
+- **Task:** Add a summary or feedback message after the "Are we a good fit" quiz on the Contact page.
+
+---
+
+## 9. **Technical Quality & Security**
+
+- **Task:** Refactor all imports to use root (`@/`) imports, not relative paths.
+- **Task:** Move all interface/type definitions to a shared `/types` or `/interfaces` directory.
+- **Task:** Refactor all hardcoded API endpoints (e.g., personas) to use the database and models.
+- **Task:** Add CSRF protection, security headers, and rate limiting to all API routes.
+- **Task:** Remove any unused or placeholder code, especially for V2 features not being shipped now.
+
+---
+
+## 10. **SEO & Analytics**
+
+- **Task:** Add per-page meta tags (title, description, keywords) as per the PRD.
+- **Task:** Add a sitemap and robots.txt.
+- **Task:** Integrate Google Analytics (GA4) or Hotjar for basic analytics tracking.
+
+---
+
+## 11. **Deployment & Maintenance**
+
+- **Task:** Remove all unused or old Vercel deployments.
+- **Task:** Document a simple website maintenance plan (who updates content, how often, and how).
+- **Task:** Review and clean up the git history; propose a new branching strategy if needed.
+
+---
+
+
+
