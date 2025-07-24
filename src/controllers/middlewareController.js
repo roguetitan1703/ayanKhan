@@ -1,10 +1,19 @@
 import connection from "../config/connectDB.js";
 
 const middlewareController = async (req, res, next) => {
-  // xác nhận token
+  // Log full incoming request
+  const fullUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  console.log(`Incoming Request: ${req.method} ${fullUrl}`);
+  console.log("Query Params:", req.query);
+
+  // Optionally log return_url if present
+  if (req.query.return_url) {
+    console.log("Return URL Detected:", req.query.return_url);
+  }
+
+  // Retrieve token from cookies
   const auth = req.cookies.auth;
 
-  // if (!auth) return res.redirect("/login");
   try {
     const [rows] = await connection.query(
       "SELECT `token`, `status` FROM `users` WHERE `token` = ? AND `veri` = 1",
@@ -16,7 +25,7 @@ const middlewareController = async (req, res, next) => {
       return res.end();
     }
 
-    if (auth == rows[0].token && rows[0].status == "1") {
+    if (auth === rows[0].token && rows[0].status === "1") {
       req.userToken = auth;
       next();
     } else {
