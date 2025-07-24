@@ -5,8 +5,8 @@ import crypto from 'crypto';
 const SECRET_TOKEN = '8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC';
 const OPERATOR_KEY = '75clubgames';
 const API_URL = "https://dev-test.spribe.io/games/launch"
-const return_url = "https://75club.games/"
-const currency = "INR"
+const RETURN_URL = "https://75club.games/"
+const CURRENCY = "INR"
 
 
 const generateToken = (playerId, timestamp) => {
@@ -50,7 +50,7 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
 export const spribeLaunchGame = async (req, res) => {
     const userToken = req.userToken;
     const { gameName } = req.body
-    const game = gameName;
+
 
     // console.log(userToken, gameName, game)
 
