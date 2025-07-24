@@ -28,8 +28,6 @@ import { bgamingLaunchGame, bgamingWalletInfo } from "../controllers/bgamingCont
 import smartSoftGameController from "../controllers/SmartSoftController.js";
 import JilliGameController from "../controllers/JilliGameController.js";
 import { upload } from "./upload.js";
-import { validateInoutSignature } from '../middleware/inoutSecurity.js';
-import * as inoutController from '../controllers/inoutController.js';
 // web.js (CommonJS)
 
 
@@ -1450,10 +1448,6 @@ router.get('/slotSpribe', middlewareController, homeController.slotspribePage);
   ); // get info account
   
   
-
-  // == In-Out Games Provider Routes ==
-  router.post('/api/callback/inout', validateInoutSignature, inoutController.handleCallback);
-  router.get('/inout/launch', inoutController.generateLaunchUrl);
 
   return app.use("/", router);
 };
