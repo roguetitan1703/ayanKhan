@@ -2,8 +2,8 @@ import axios from 'axios';
 import connection from "../config/connectDB.js";
 import crypto from 'crypto';
 
-const SECRET_TOKEN = '8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC';
-const OPERATOR_KEY = '75clubgames';
+const SECRET_TOKEN = 'P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ';
+const OPERATOR_KEY = 'reddybook75new';
 const API_URL = "https://dev-test.spribe.io/games/launch"
 const RETURN_URL = "https://75club.games/"
 const CURRENCY = "INR"
