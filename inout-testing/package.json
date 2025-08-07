@@ -1,0 +1,23 @@
+{
+    "name": "inout-games-tester",
+    "version": "1.0.0",
+    "description": "Comprehensive testing suite for In-Out Games integration",
+    "main": "test_inout_integration.js",
+    "scripts": {
+        "test": "node test_inout_integration.js",
+        "test:single": "node test_single_scenario.js",
+        "test:quick": "node test_quick.js"
+    },
+    "dependencies": {
+        "axios": "^1.6.0"
+    },
+    "keywords": [
+        "inout-games",
+        "integration",
+        "testing",
+        "webhook",
+        "gaming"
+    ],
+    "author": "Your Name",
+    "license": "MIT"
+}
