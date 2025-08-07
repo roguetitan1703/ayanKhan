@@ -1414,14 +1414,22 @@ const initWebRouter = (app) => {
     middlewareController,
     spribeController.spribeLaunchGame,
   );
+  
+  // Spribe callback routes - FIXED with correct mapping and new URL structure
+  router.post("/api/v1/callback/spribe/info", spribeController.spribeInfo);
+  router.post("/api/v1/callback/spribe/auth", spribeController.spribeAuth);
+  router.post("/api/v1/callback/spribe/deposit", spribeController.spribeDeposit); // FIXED: was spribeWithdraw
+  router.post("/api/v1/callback/spribe/withdraw", spribeController.spribeWithdraw); // FIXED: was spribeDeposit
+  router.post("/api/v1/callback/spribe", spribeController.spribeRollback);
+
+  // Legacy routes for backward compatibility (if needed)
   router.post("/api/callback/spribe/info", spribeController.spribeInfo);
   router.post("/api/callback/spribe/auth", spribeController.spribeAuth);
-  router.post("/api/callback/spribe/deposit", spribeController.spribeWithdraw);
-  router.post("/api/callback/spribe/withdraw", spribeController.spribeDeposit);
-
+  router.post("/api/callback/spribe/deposit", spribeController.spribeDeposit);
+  router.post("/api/callback/spribe/withdraw", spribeController.spribeWithdraw);
   router.post("/api/callback/spribe", spribeController.spribeRollback);
 
-  //https://75club.games/api/callback/spribe
+  //https://75club.games/api/v1/callback/spribe
   //ezugi
   router.post(
     "/playEzugiGame",

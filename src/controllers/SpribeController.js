@@ -2,6 +2,7 @@ import axios from 'axios';
 import connection from "../config/connectDB.js";
 import crypto from 'crypto';
 
+// Updated credentials from Spribe
 const SECRET_TOKEN = 'P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ';
 const OPERATOR_KEY = 'reddybook75new';
 const API_URL = "https://dev-test.spribe.io/games/launch"
@@ -31,7 +32,17 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
     const timestamp = req.headers['x-spribe-client-ts'];
     const signature = req.headers['x-spribe-client-signature'];
 
+    console.log('[SPRIBE][SIGNATURE][DEBUG]', {
+        clientId,
+        timestamp,
+        signature,
+        url: req.originalUrl,
+        method: req.method,
+        body: req.body
+    });
+
     if (!clientId || !timestamp || !signature) {
+        console.log('[SPRIBE][SIGNATURE][ERROR] Missing required headers');
         return false;
     }
 
@@ -43,6 +54,15 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
     const expectedSignature = crypto.createHmac('sha256', secret)
         .update(stringToSign)
         .digest('hex');
+
+    console.log('[SPRIBE][SIGNATURE][DEBUG]', {
+        pathWithQuery,
+        rawBody,
+        stringToSign,
+        expectedSignature,
+        receivedSignature: signature,
+        isValid: signature === expectedSignature
+    });
 
     return signature === expectedSignature;
 }
@@ -122,23 +142,41 @@ export const spribeInfo = async (req, res) => {
 };
 
 export const spribeAuth = async (req, res) => {
+    console.log('[SPRIBE][AUTH][REQUEST]', {
+        headers: req.headers,
+        body: req.body,
+        url: req.originalUrl
+    });
+
     if (!validateSpribeSignature(req)) {
+        console.log('[SPRIBE][AUTH][ERROR] Invalid signature');
         return res.status(403).json({ code: 403, message: "Invalid signature" });
     }
+    
     try {
         const { user_token, currency } = req.body;
+        console.log('[SPRIBE][AUTH][PARAMS]', { user_token, currency });
+        
         if (!user_token) {
+            console.log('[SPRIBE][AUTH][ERROR] Missing user_token');
             return res.status(400).json({ code: 400, message: "Missing user_token" });
         }
 
         // Lookup user by session token
         const [userRows] = await connection.query('SELECT * FROM users WHERE spribeLaunchToken = ?', [user_token]);
+        console.log('[SPRIBE][AUTH][DB_QUERY]', { 
+            user_token, 
+            found_users: userRows.length,
+            user: userRows[0] ? { id: userRows[0].id_user, name: userRows[0].name_user, money: userRows[0].money } : null
+        });
+        
         if (!userRows.length) {
+            console.log('[SPRIBE][AUTH][ERROR] Token expired or invalid');
             return res.status(200).json({ code: 401, message: 'Token expired or invalid' });
         }
         const user = userRows[0];
 
-        return res.json({
+        const response = {
             code: 200,
             message: "Success",
             data: {
@@ -147,7 +185,10 @@ export const spribeAuth = async (req, res) => {
                 balance: Number(user.money) * 1000,
                 currency: currency || "INR"
             }
-        });
+        };
+        
+        console.log('[SPRIBE][AUTH][SUCCESS]', response);
+        return res.json(response);
     } catch (error) {
         console.error('[SPRIBE][AUTH][EXCEPTION]', error, req.body);
         return res.status(200).json({ code: 500, message: 'Internal error' });
