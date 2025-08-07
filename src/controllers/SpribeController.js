@@ -1,6 +1,8 @@
 import axios from 'axios';
 import connection from "../config/connectDB.js";
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 // Updated credentials from Spribe
 const SECRET_TOKEN = 'P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ';
@@ -8,6 +10,33 @@ const OPERATOR_KEY = 'reddybook75new';
 const API_URL = "https://dev-test.spribe.io/games/launch"
 const RETURN_URL = "https://75club.games/"
 const CURRENCY = "INR"
+
+// File logging setup
+const LOG_DIR = './logs';
+const SPRIBE_LOG_FILE = path.join(LOG_DIR, 'spribe.log');
+
+// Ensure logs directory exists
+if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+}
+
+// Enhanced logging function for Spribe
+function logSpribe(level, message, data = null) {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+        timestamp,
+        level,
+        message,
+        data
+    };
+    
+    // Console output
+    console.log(`[SPRIBE][${level}]`, message, data ? data : '');
+    
+    // File output
+    const logLine = `${timestamp} [SPRIBE][${level}] ${message} ${data ? JSON.stringify(data) : ''}\n`;
+    fs.appendFileSync(SPRIBE_LOG_FILE, logLine);
+}
 
 
 const generateToken = (playerId, timestamp) => {
@@ -32,7 +61,7 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
     const timestamp = req.headers['x-spribe-client-ts'];
     const signature = req.headers['x-spribe-client-signature'];
 
-    console.log('[SPRIBE][SIGNATURE][DEBUG]', {
+    logSpribe('SIGNATURE_DEBUG', 'Signature validation attempt', {
         clientId,
         timestamp,
         signature,
@@ -42,7 +71,7 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
     });
 
     if (!clientId || !timestamp || !signature) {
-        console.log('[SPRIBE][SIGNATURE][ERROR] Missing required headers');
+        logSpribe('SIGNATURE_ERROR', 'Missing required headers');
         return false;
     }
 
@@ -55,7 +84,7 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
         .update(stringToSign)
         .digest('hex');
 
-    console.log('[SPRIBE][SIGNATURE][DEBUG]', {
+    logSpribe('SIGNATURE_DEBUG', 'Signature calculation', {
         pathWithQuery,
         rawBody,
         stringToSign,
@@ -142,34 +171,34 @@ export const spribeInfo = async (req, res) => {
 };
 
 export const spribeAuth = async (req, res) => {
-    console.log('[SPRIBE][AUTH][REQUEST]', {
+    logSpribe('AUTH_REQUEST', 'Auth request received', {
         headers: req.headers,
         body: req.body,
         url: req.originalUrl
     });
 
     // TEMPORARY: Log all headers to see what Spribe is actually sending
-    console.log('[SPRIBE][AUTH][ALL_HEADERS]', Object.keys(req.headers).map(key => `${key}: ${req.headers[key]}`));
+    logSpribe('AUTH_HEADERS', 'All headers received', Object.keys(req.headers).map(key => `${key}: ${req.headers[key]}`));
 
     // TEMPORARY: Bypass signature validation for testing
-    console.log('[SPRIBE][AUTH][WARNING] Bypassing signature validation for testing');
+    logSpribe('AUTH_WARNING', 'Bypassing signature validation for testing');
     // if (!validateSpribeSignature(req)) {
-    //     console.log('[SPRIBE][AUTH][ERROR] Invalid signature');
+    //     logSpribe('AUTH_ERROR', 'Invalid signature');
     //     return res.status(403).json({ code: 403, message: "Invalid signature" });
     // }
     
     try {
         const { user_token, currency } = req.body;
-        console.log('[SPRIBE][AUTH][PARAMS]', { user_token, currency });
+        logSpribe('AUTH_PARAMS', 'Auth parameters', { user_token, currency });
         
         if (!user_token) {
-            console.log('[SPRIBE][AUTH][ERROR] Missing user_token');
+            logSpribe('AUTH_ERROR', 'Missing user_token');
             return res.status(400).json({ code: 400, message: "Missing user_token" });
         }
 
         // Lookup user by session token
         const [userRows] = await connection.query('SELECT * FROM users WHERE spribeLaunchToken = ?', [user_token]);
-        console.log('[SPRIBE][AUTH][DB_QUERY]', { 
+        logSpribe('AUTH_DB_QUERY', 'Database query result', { 
             user_token, 
             found_users: userRows.length,
             user: userRows[0] ? { id: userRows[0].id_user, name: userRows[0].name_user, money: userRows[0].money } : null
@@ -178,16 +207,16 @@ export const spribeAuth = async (req, res) => {
         // Also check if any users have spribeLaunchToken at all
         try {
             const [allUsers] = await connection.query('SELECT COUNT(*) as total FROM users WHERE spribeLaunchToken IS NOT NULL');
-            console.log('[SPRIBE][AUTH][DB_DEBUG]', { 
+            logSpribe('AUTH_DB_DEBUG', 'Database debug info', { 
                 total_users_with_spribe_token: allUsers[0].total,
                 searching_for_token: user_token
             });
         } catch (dbError) {
-            console.log('[SPRIBE][AUTH][DB_ERROR]', dbError.message);
+            logSpribe('AUTH_DB_ERROR', 'Database error', { error: dbError.message });
         }
         
         if (!userRows.length) {
-            console.log('[SPRIBE][AUTH][ERROR] Token expired or invalid');
+            logSpribe('AUTH_ERROR', 'Token expired or invalid');
             return res.status(200).json({ code: 401, message: 'Token expired or invalid' });
         }
         const user = userRows[0];
@@ -203,10 +232,10 @@ export const spribeAuth = async (req, res) => {
             }
         };
         
-        console.log('[SPRIBE][AUTH][SUCCESS]', response);
+        logSpribe('AUTH_SUCCESS', 'Auth successful', response);
         
         // Log session summary
-        console.log('[SPRIBE][SESSION][SUMMARY]', {
+        logSpribe('SESSION_SUMMARY', 'Session summary', {
             user_id: user.id_user,
             username: user.name_user,
             session_token: req.body.session_token,
@@ -223,35 +252,35 @@ export const spribeAuth = async (req, res) => {
 };
 
 export const spribeDeposit = async (req, res) => {
-    console.log('[SPRIBE][DEPOSIT][REQUEST]', {
+    logSpribe('DEPOSIT_REQUEST', 'Deposit request received', {
         headers: req.headers,
         body: req.body,
         url: req.originalUrl
     });
 
     // TEMPORARY: Bypass signature validation for testing
-    console.log('[SPRIBE][DEPOSIT][WARNING] Bypassing signature validation for testing');
+    logSpribe('DEPOSIT_WARNING', 'Bypassing signature validation for testing');
     // if (!validateSpribeSignature(req)) {
     //     return res.status(403).json({ code: 403, message: "Invalid signature" });
     // }
     try {
         const { user_id, amount, provider_tx_id, currency } = req.body;
-        console.log('[SPRIBE][DEPOSIT][PARAMS]', { user_id, amount, provider_tx_id, currency });
+        logSpribe('DEPOSIT_PARAMS', 'Deposit parameters', { user_id, amount, provider_tx_id, currency });
         
         if (!user_id || !amount || !provider_tx_id) {
-            console.log('[SPRIBE][DEPOSIT][ERROR] Missing required fields');
+            logSpribe('DEPOSIT_ERROR', 'Missing required fields');
             return res.status(400).json({ code: 400, message: "Missing required fields" });
         }
 
         // Check for duplicate transaction
         const [existingTransaction] = await connection.query('SELECT * FROM spribetransaction WHERE provider_tx_id = ?', [provider_tx_id]);
-        console.log('[SPRIBE][DEPOSIT][DUPLICATE_CHECK]', { 
+        logSpribe('DEPOSIT_DUPLICATE_CHECK', 'Duplicate transaction check', { 
             provider_tx_id, 
             existing_transactions: existingTransaction.length 
         });
         
         if (existingTransaction.length) {
-            console.log('[SPRIBE][DEPOSIT][DUPLICATE_FOUND]', existingTransaction[0]);
+            logSpribe('DEPOSIT_DUPLICATE_FOUND', 'Duplicate transaction found', existingTransaction[0]);
             return res.status(200).json({
                 code: 409,
                 message: "Duplicate transaction",
@@ -268,26 +297,26 @@ export const spribeDeposit = async (req, res) => {
 
         // Lookup user
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
-        console.log('[SPRIBE][DEPOSIT][USER_LOOKUP]', { 
+        logSpribe('DEPOSIT_USER_LOOKUP', 'User lookup result', { 
             user_id, 
             found_users: userRows.length,
             user: userRows[0] ? { id: userRows[0].id_user, name: userRows[0].name_user, money: userRows[0].money } : null
         });
         
         if (!userRows.length) {
-            console.log('[SPRIBE][DEPOSIT][ERROR] User not found');
+            logSpribe('DEPOSIT_ERROR', 'User not found');
             return res.status(401).json({ code: 401, message: 'User token is invalid' });
         }
         const user = userRows[0];
         const old_balance = Number(user.money) * 1000;
-        console.log('[SPRIBE][DEPOSIT][BALANCE_CHECK]', { 
+        logSpribe('DEPOSIT_BALANCE_CHECK', 'Balance check', { 
             old_balance, 
             amount, 
             sufficient_funds: amount <= old_balance 
         });
         
         if (amount > old_balance) {
-            console.log('[SPRIBE][DEPOSIT][ERROR] Insufficient funds');
+            logSpribe('DEPOSIT_ERROR', 'Insufficient funds');
             return res.status(402).json({
                 code: 402,
                 message: 'Insufficient funds',
@@ -298,10 +327,13 @@ export const spribeDeposit = async (req, res) => {
 
         // Update balance
         await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [new_balance / 1000, user_id]);
+        logSpribe('DEPOSIT_DB_UPDATE', 'Balance updated successfully');
+        
         const operator_tx_id = `OP_TX_${Date.now()}`;
         await connection.query('INSERT INTO spribetransaction (id_user, type, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, deposit_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
             user_id, 0, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, amount
         ]);
+        logSpribe('DEPOSIT_DB_INSERT', 'Transaction recorded successfully');
 
         const response = {
             code: 200,
@@ -309,52 +341,52 @@ export const spribeDeposit = async (req, res) => {
             data: { user_id, operator_tx_id, provider_tx_id, old_balance, new_balance, currency }
         };
         
-        console.log('[SPRIBE][DEPOSIT][SUCCESS]', response);
+        logSpribe('DEPOSIT_SUCCESS', 'Deposit successful', response);
         return res.status(200).json(response);
     } catch (error) {
-        console.error('[SPRIBE][DEPOSIT][EXCEPTION]', error, req.body);
+        logSpribe('DEPOSIT_EXCEPTION', 'Deposit exception', { error: error.message, body: req.body });
         return res.status(500).json({ code: 500, message: 'Internal error' });
     }
 };
 
 export const spribeWithdraw = async (req, res) => {
-    console.log('[SPRIBE][WITHDRAW][REQUEST]', {
+    logSpribe('WITHDRAW_REQUEST', 'Withdraw request received', {
         headers: req.headers,
         body: req.body,
         url: req.originalUrl
     });
 
     // TEMPORARY: Bypass signature validation for testing
-    console.log('[SPRIBE][WITHDRAW][WARNING] Bypassing signature validation for testing');
+    logSpribe('WITHDRAW_WARNING', 'Bypassing signature validation for testing');
     // if (!validateSpribeSignature(req)) {
     //     return res.status(403).json({ code: 403, message: "Invalid signature" });
     // }
     try {
         const { user_id, amount, provider_tx_id, currency } = req.body;
-        console.log('[SPRIBE][WITHDRAW][PARAMS]', { user_id, amount, provider_tx_id, currency });
+        logSpribe('WITHDRAW_PARAMS', 'Withdraw parameters', { user_id, amount, provider_tx_id, currency });
         
         if (!user_id || !amount || !provider_tx_id) {
-            console.log('[SPRIBE][WITHDRAW][ERROR] Missing required fields');
+            logSpribe('WITHDRAW_ERROR', 'Missing required fields');
             return res.status(400).json({ code: 400, message: "Missing required fields" });
         }
 
         // Lookup user
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
-        console.log('[SPRIBE][WITHDRAW][USER_LOOKUP]', { 
+        logSpribe('WITHDRAW_USER_LOOKUP', 'User lookup result', { 
             user_id, 
             found_users: userRows.length,
             user: userRows[0] ? { id: userRows[0].id_user, name: userRows[0].name_user, money: userRows[0].money } : null
         });
         
         if (!userRows.length) {
-            console.log('[SPRIBE][WITHDRAW][ERROR] User not found');
+            logSpribe('WITHDRAW_ERROR', 'User not found');
             return res.status(401).json({ code: 401, message: 'User token is invalid' });
         }
         const user = userRows[0];
         const old_balance = Number(user.money) * 1000;
         const new_balance = old_balance + Number(amount);
         
-        console.log('[SPRIBE][WITHDRAW][BALANCE_UPDATE]', { 
+        logSpribe('WITHDRAW_BALANCE_UPDATE', 'Balance update calculation', { 
             old_balance, 
             amount, 
             new_balance 
@@ -362,10 +394,13 @@ export const spribeWithdraw = async (req, res) => {
 
         // Update balance
         await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [new_balance / 1000, user_id]);
+        logSpribe('WITHDRAW_DB_UPDATE', 'Balance updated successfully');
+        
         const operator_tx_id = `OP_TX_${Date.now()}`;
         await connection.query('INSERT INTO spribetransaction (id_user, type, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, withdrawal_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
             user_id, 1, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, amount
         ]);
+        logSpribe('WITHDRAW_DB_INSERT', 'Transaction recorded successfully');
 
         const response = {
             code: 200,
@@ -373,10 +408,10 @@ export const spribeWithdraw = async (req, res) => {
             data: { user_id, operator_tx_id, provider_tx_id, old_balance, new_balance, currency }
         };
         
-        console.log('[SPRIBE][WITHDRAW][SUCCESS]', response);
+        logSpribe('WITHDRAW_SUCCESS', 'Withdraw successful', response);
         return res.status(200).json(response);
     } catch (error) {
-        console.error('[SPRIBE][WITHDRAW][EXCEPTION]', error, req.body);
+        logSpribe('WITHDRAW_EXCEPTION', 'Withdraw exception', { error: error.message, body: req.body });
         return res.status(500).json({ code: 500, message: 'Internal error' });
     }
 };
