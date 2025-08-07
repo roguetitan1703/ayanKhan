@@ -204,6 +204,17 @@ export const spribeAuth = async (req, res) => {
         };
         
         console.log('[SPRIBE][AUTH][SUCCESS]', response);
+        
+        // Log session summary
+        console.log('[SPRIBE][SESSION][SUMMARY]', {
+            user_id: user.id_user,
+            username: user.name_user,
+            session_token: req.body.session_token,
+            balance: Number(user.money) * 1000,
+            currency: currency || "INR",
+            timestamp: new Date().toISOString()
+        });
+        
         return res.json(response);
     } catch (error) {
         console.error('[SPRIBE][AUTH][EXCEPTION]', error, req.body);
@@ -225,13 +236,22 @@ export const spribeDeposit = async (req, res) => {
     // }
     try {
         const { user_id, amount, provider_tx_id, currency } = req.body;
+        console.log('[SPRIBE][DEPOSIT][PARAMS]', { user_id, amount, provider_tx_id, currency });
+        
         if (!user_id || !amount || !provider_tx_id) {
+            console.log('[SPRIBE][DEPOSIT][ERROR] Missing required fields');
             return res.status(400).json({ code: 400, message: "Missing required fields" });
         }
 
         // Check for duplicate transaction
         const [existingTransaction] = await connection.query('SELECT * FROM spribetransaction WHERE provider_tx_id = ?', [provider_tx_id]);
+        console.log('[SPRIBE][DEPOSIT][DUPLICATE_CHECK]', { 
+            provider_tx_id, 
+            existing_transactions: existingTransaction.length 
+        });
+        
         if (existingTransaction.length) {
+            console.log('[SPRIBE][DEPOSIT][DUPLICATE_FOUND]', existingTransaction[0]);
             return res.status(200).json({
                 code: 409,
                 message: "Duplicate transaction",
@@ -248,12 +268,26 @@ export const spribeDeposit = async (req, res) => {
 
         // Lookup user
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
+        console.log('[SPRIBE][DEPOSIT][USER_LOOKUP]', { 
+            user_id, 
+            found_users: userRows.length,
+            user: userRows[0] ? { id: userRows[0].id_user, name: userRows[0].name_user, money: userRows[0].money } : null
+        });
+        
         if (!userRows.length) {
+            console.log('[SPRIBE][DEPOSIT][ERROR] User not found');
             return res.status(401).json({ code: 401, message: 'User token is invalid' });
         }
         const user = userRows[0];
         const old_balance = Number(user.money) * 1000;
+        console.log('[SPRIBE][DEPOSIT][BALANCE_CHECK]', { 
+            old_balance, 
+            amount, 
+            sufficient_funds: amount <= old_balance 
+        });
+        
         if (amount > old_balance) {
+            console.log('[SPRIBE][DEPOSIT][ERROR] Insufficient funds');
             return res.status(402).json({
                 code: 402,
                 message: 'Insufficient funds',
@@ -269,11 +303,14 @@ export const spribeDeposit = async (req, res) => {
             user_id, 0, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, amount
         ]);
 
-        return res.status(200).json({
+        const response = {
             code: 200,
             message: "Success",
             data: { user_id, operator_tx_id, provider_tx_id, old_balance, new_balance, currency }
-        });
+        };
+        
+        console.log('[SPRIBE][DEPOSIT][SUCCESS]', response);
+        return res.status(200).json(response);
     } catch (error) {
         console.error('[SPRIBE][DEPOSIT][EXCEPTION]', error, req.body);
         return res.status(500).json({ code: 500, message: 'Internal error' });
@@ -294,18 +331,34 @@ export const spribeWithdraw = async (req, res) => {
     // }
     try {
         const { user_id, amount, provider_tx_id, currency } = req.body;
+        console.log('[SPRIBE][WITHDRAW][PARAMS]', { user_id, amount, provider_tx_id, currency });
+        
         if (!user_id || !amount || !provider_tx_id) {
+            console.log('[SPRIBE][WITHDRAW][ERROR] Missing required fields');
             return res.status(400).json({ code: 400, message: "Missing required fields" });
         }
 
         // Lookup user
         const [userRows] = await connection.query('SELECT * FROM users WHERE id_user = ?', [user_id]);
+        console.log('[SPRIBE][WITHDRAW][USER_LOOKUP]', { 
+            user_id, 
+            found_users: userRows.length,
+            user: userRows[0] ? { id: userRows[0].id_user, name: userRows[0].name_user, money: userRows[0].money } : null
+        });
+        
         if (!userRows.length) {
+            console.log('[SPRIBE][WITHDRAW][ERROR] User not found');
             return res.status(401).json({ code: 401, message: 'User token is invalid' });
         }
         const user = userRows[0];
         const old_balance = Number(user.money) * 1000;
         const new_balance = old_balance + Number(amount);
+        
+        console.log('[SPRIBE][WITHDRAW][BALANCE_UPDATE]', { 
+            old_balance, 
+            amount, 
+            new_balance 
+        });
 
         // Update balance
         await connection.query('UPDATE users SET money = ? WHERE id_user = ?', [new_balance / 1000, user_id]);
@@ -314,11 +367,14 @@ export const spribeWithdraw = async (req, res) => {
             user_id, 1, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, amount
         ]);
 
-        return res.status(200).json({
+        const response = {
             code: 200,
             message: "ok",
             data: { user_id, operator_tx_id, provider_tx_id, old_balance, new_balance, currency }
-        });
+        };
+        
+        console.log('[SPRIBE][WITHDRAW][SUCCESS]', response);
+        return res.status(200).json(response);
     } catch (error) {
         console.error('[SPRIBE][WITHDRAW][EXCEPTION]', error, req.body);
         return res.status(500).json({ code: 500, message: 'Internal error' });

@@ -1,0 +1,87 @@
+Subject: URGENT: Missing Security Headers Causing Game Disconnections
+
+Hi Spribe Support Team,
+
+We're experiencing critical issues with our Spribe integration where users are getting "kicked" from games immediately after placing bets. After extensive debugging, we've identified the root cause:
+
+**ISSUE: Missing Security Headers in Callback Requests**
+
+Our system expects these security headers for ALL callback requests:
+- X-Spribe-Client-ID: reddybook75new
+- X-Spribe-Client-TS: [timestamp]
+- X-Spribe-Client-Signature: [signature]
+
+**EVIDENCE FROM OUR LOGS:**
+
+1. **AUTH requests work** (we temporarily bypassed signature validation):
+```
+[SPRIBE][AUTH][SUCCESS] {
+  code: 200,
+  message: 'Success',
+  data: {
+    user_id: '202043',
+    username: 'ADMIN',
+    balance: 2932830,
+    currency: 'INR'
+  }
+}
+```
+
+2. **WITHDRAW requests FAIL** (missing headers):
+```
+[SPRIBE][SIGNATURE][DEBUG] {
+  clientId: undefined,
+  timestamp: undefined,
+  signature: undefined,
+  url: '/api/v1/callback/spribe/withdraw',
+  method: 'POST'
+}
+[SPRIBE][SIGNATURE][ERROR] Missing required headers
+```
+
+**CURRENT HEADERS RECEIVED:**
+```
+host: 75club.games
+x-real-ip: 194.36.47.150
+x-forwarded-for: 194.36.47.150
+remote-host: 194.36.47.150
+connection: upgrade
+content-length: 170
+accept-charset: utf-8
+content-type: application/json; charset=utf-8
+accept: application/json; charset=utf-8
+user-agent: UserAgent/Spribe
+```
+
+**MISSING HEADERS:**
+- X-Spribe-Client-ID: reddybook75new
+- X-Spribe-Client-TS: [timestamp]
+- X-Spribe-Client-Signature: [signature]
+
+**IMPACT:**
+- Users can launch games ✅
+- Users get "kicked" immediately after placing bets ❌
+- This affects ALL games: plinko, mines, etc.
+
+**OUR CONFIGURATION:**
+- Callback URL: https://75club.games/api/v1/callback/spribe
+- Operator Key: reddybook75new
+- Secret Token: P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ
+- Supported Currencies: USD, INR
+
+**REQUESTED ACTION:**
+Please configure your callback system to include the required security headers for ALL callback types:
+- /api/v1/callback/spribe/auth
+- /api/v1/callback/spribe/withdraw (bets)
+- /api/v1/callback/spribe/deposit (wins)
+- /api/v1/callback/spribe (rollback)
+
+**SIGNATURE GENERATION:**
+String to sign: `${timestamp}${path}${body}`
+Signature: HMAC SHA256 with secret token, hex encoded
+
+This is blocking our production deployment. Please prioritize this fix.
+
+Thank you,
+[Your Name]
+[Your Contact] 
