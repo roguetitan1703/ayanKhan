@@ -97,16 +97,22 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
 }
 
 export const spribeLaunchGame = async (req, res) => {
-    const userToken = req.userToken;
+    const userToken = req.userToken || req.cookies?.auth;
     const { gameName } = req.body
 
+    console.log('[SPRIBE][LAUNCH]', { userToken, gameName });
 
-    // console.log(userToken, gameName, game)
+    if (!userToken) {
+        return res.status(401).json({
+            errorCode: 1,
+            message: 'Authentication required',
+        });
+    }
 
     try {
         const [userRows] = await connection.query('SELECT * FROM users WHERE token = ?', [userToken]);
         
-        // console.log(userRows,"userRows")
+        console.log('[SPRIBE][LAUNCH]', { userRows: userRows.length });
         // Check if user exists
         if (!userRows.length) {
             return res.status(404).json({

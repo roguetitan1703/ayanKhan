@@ -1411,7 +1411,6 @@ const initWebRouter = (app) => {
   //spribe api game
   router.post(
     "/playSpribeGame",
-    middlewareController,
     spribeController.spribeLaunchGame,
   );
   
