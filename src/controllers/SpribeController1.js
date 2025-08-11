@@ -360,7 +360,7 @@ export const spribeAuth = async (req, res) => {
   }
 };
 
-export const spribeWithdraw = async (req, res) => {
+export const spribeDeposit = async (req, res) => {
   // const validation = validateSpribeSignature(req);
   // if (!validation.valid) return res.status(200).json(validation);
 
@@ -478,7 +478,7 @@ export const spribeWithdraw = async (req, res) => {
   }
 };
 
-export const spribeDeposit = async (req, res) => {
+export const spribeWithdraw = async (req, res) => {
   // const validation = validateSpribeSignature(req);
   // if (!validation.valid) return res.status(200).json(validation);
 
