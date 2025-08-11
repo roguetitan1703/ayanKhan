@@ -252,51 +252,117 @@ export const spribeInfo = async (req, res) => {
   }
 };
 
-export const spribeAuth = async (req, res) => {
-  // const validation = validateSpribeSignature(req);
-  // if (!validation.valid) return res.status(200).json(validation);
+// export const spribeAuth = async (req, res) => {
+//   // const validation = validateSpribeSignature(req);
+//   // if (!validation.valid) return res.status(200).json(validation);
 
-  const { user_token, session_token, platform, currency } = req.body;
+//   const { user_token, session_token, platform, currency } = req.body;
+
+//   try {
+//     const [userRows] = await connection.query(
+//       "SELECT * FROM users WHERE spribeLaunchToken = ?",
+//       [user_token],
+//     );
+
+//     if (!userRows.length) {
+//       return res.status(200).json({
+//         code: 401,
+//         message: "User token is invalid",
+//       });
+//     }
+
+//     const user = userRows[0];
+
+//     // Optional: Expiry check
+//     if (user.token_expiry && new Date(user.token_expiry) < new Date()) {
+//       return res.status(200).json({
+//         code: 403,
+//         message: "User token is expired",
+//       });
+//     }
+
+//     return res.status(200).json({
+//       code: 200,
+//       message: "ok",
+//       data: {
+//         user_id: String(user.id_user),
+//         username: user.name_user,
+//         balance: Math.floor(Number(user.money) * 1000), // Convert to units
+//         currency: currency || "INR",
+//         platform: platform || "desktop",
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error in spribeAuth:", error);
+//     return res.status(200).json({
+//       code: 500,
+//       message: "Internal error",
+//     });
+//   }
+// };
+
+// ✅ Auth callback
+export const spribeAuth = async (req, res) => {
+  console.log("[SPRIBE][AUTH] Incoming request:", {
+    headers: req.headers,
+    body: req.body,
+  });
+
+  // ✅ Step 1: Validate signature
+  const validation = validateSpribeSignature(req);
+  if (!validation.valid) {
+    console.log("[SPRIBE][AUTH] Signature validation failed:", validation);
+    return res.status(200).json({
+      code: validation.code || 413,
+      message: validation.message || "Invalid signature",
+    });
+  }
 
   try {
-    const [userRows] = await connection.query(
-      "SELECT * FROM users WHERE spribeLaunchToken = ?",
-      [user_token],
-    );
+    const { user_token } = req.body;
 
-    if (!userRows.length) {
+    if (!user_token) {
+      console.log("[SPRIBE][AUTH] Missing user_token");
       return res.status(200).json({
         code: 401,
         message: "User token is invalid",
       });
     }
 
-    const user = userRows[0];
+    // ✅ Step 2: Find user
+    const [rows] = await connection.query(
+      "SELECT id_user, name_user, money, currency FROM users WHERE token = ?",
+      [user_token],
+    );
 
-    // Optional: Expiry check
-    if (user.token_expiry && new Date(user.token_expiry) < new Date()) {
+    if (!rows.length) {
+      console.log("[SPRIBE][AUTH] No user found for token:", user_token);
       return res.status(200).json({
-        code: 403,
-        message: "User token is expired",
+        code: 401,
+        message: "User token is invalid",
       });
     }
 
+    const user = rows[0];
+    const balance = Math.floor(Number(user.money) * 1000); // Convert to integer units
+
+    // ✅ Step 3: Return success
     return res.status(200).json({
       code: 200,
       message: "ok",
       data: {
         user_id: String(user.id_user),
         username: user.name_user,
-        balance: Math.floor(Number(user.money) * 1000), // Convert to units
-        currency: currency || "INR",
-        platform: platform || "desktop",
+        balance,
+        currency: user.currency || "INR",
       },
     });
   } catch (error) {
-    console.error("Error in spribeAuth:", error);
+    console.error("[SPRIBE][AUTH] Error:", error);
     return res.status(200).json({
       code: 500,
       message: "Internal error",
+      detail: error.message,
     });
   }
 };
