@@ -615,8 +615,6 @@ export const spribeAuth = async (req, res) => {
 //   }
 // };
 
-import connection from "../config/connectDB.js";
-
 // ✅ WITHDRAW (Player bets → deduct from balance)
 export const spribeWithdraw = async (req, res) => {
   const {
