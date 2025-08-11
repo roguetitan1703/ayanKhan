@@ -6,7 +6,7 @@ const SECRET_TOKEN = "P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ";
 const OPERATOR_KEY = "reddybook75new";
 const API_URL = "https://dev-test.spribe.io/games/launch";
 const GAME_API_URL = "https://secure-ga.staging.spribe.io/v3";
-const return_url = "https://75club.games/api/v1/callback/spribe";
+const return_url = "https://75club.games/";
 const currency = "INR";
 
 const generateToken = (playerId, timestamp) => {
