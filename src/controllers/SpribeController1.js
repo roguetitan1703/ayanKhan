@@ -360,264 +360,6 @@ export const spribeAuth = async (req, res) => {
   }
 };
 
-export const spribeWithdraw = async (req, res) => {
-  const validation = validateRequest(req);
-  if (!validation.valid) return res.status(403).json(validation);
-
-  const {
-    user_id,
-    currency,
-    amount,
-    provider,
-    provider_tx_id,
-    game,
-    action,
-    action_id,
-    session_token,
-    platform,
-  } = req.body;
-
-  try {
-    // 1. Check for duplicate transaction
-    const [existing] = await connection.execute(
-      `SELECT operator_tx_id, old_balance, new_balance 
-       FROM spribetransaction 
-       WHERE provider_tx_id = ? LIMIT 1`,
-      [provider_tx_id],
-    );
-
-    if (existing.length > 0) {
-      return res.status(200).json({
-        code: 409,
-        message: "Duplicate transaction",
-        data: {
-          user_id,
-          operator_tx_id: existing[0].operator_tx_id,
-          old_balance: existing[0].old_balance,
-          new_balance: existing[0].new_balance,
-          currency,
-          provider,
-        },
-      });
-    }
-
-    // 2. Verify user exists
-    const [users] = await connection.execute(
-      `SELECT id_user, phone, name_user, money 
-       FROM users 
-       WHERE id_user = ? LIMIT 1`,
-      [user_id],
-    );
-
-    if (users.length === 0) {
-      return res.status(200).json({
-        code: 404,
-        message: "User not found",
-      });
-    }
-
-    const user = users[0];
-    const oldBalance = Math.floor(Number(user.money) * 1000);
-    const withdrawAmount = Number(amount);
-
-    // 3. Validate amount
-    if (withdrawAmount <= 0 || withdrawAmount > oldBalance) {
-      return res.status(200).json({
-        code: 402,
-        message: "Invalid withdrawal amount",
-        data: {
-          max_amount: oldBalance / 1000,
-        },
-      });
-    }
-
-    // 4. Process withdrawal (subtract balance)
-    const newBalance = oldBalance - withdrawAmount;
-    await connection.execute(`UPDATE users SET money = ? WHERE id_user = ?`, [
-      newBalance / 1000,
-      user_id,
-    ]);
-
-    // 5. Record transaction (type 0 = withdrawal)
-    const operatorTxId = `OP_TX_${Date.now()}`;
-    await connection.execute(
-      `INSERT INTO spribetransaction (
-        id_user, type, phone, name_user, provider, 
-        provider_tx_id, operator_tx_id, old_balance, 
-        new_balance, currency, withdrawal_amount, 
-        game, action, action_id, session_token, platform
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        user_id,
-        0,
-        user.phone,
-        user.name_user,
-        provider,
-        provider_tx_id,
-        operatorTxId,
-        oldBalance,
-        newBalance,
-        currency || "INR",
-        withdrawAmount,
-        game,
-        action,
-        action_id,
-        session_token,
-        platform || "desktop",
-      ],
-    );
-
-    return res.status(200).json({
-      code: 200,
-      message: "ok",
-      data: {
-        operator_tx_id: operatorTxId,
-        old_balance: oldBalance,
-        new_balance: newBalance,
-        currency: currency || "INR",
-        user_id,
-      },
-    });
-  } catch (error) {
-    console.error("Withdrawal processing failed:", {
-      error: error.message,
-      stack: error.stack,
-      body: req.body,
-    });
-
-    return res.status(500).json({
-      code: 500,
-      message: "Transaction failed",
-      detail:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
-  }
-};
-
-export const spribeDeposit = async (req, res) => {
-  const validation = validateRequest(req);
-  if (!validation.valid) return res.status(403).json(validation);
-
-  const {
-    user_id,
-    currency,
-    amount,
-    provider,
-    provider_tx_id,
-    game,
-    action,
-    action_id,
-    session_token,
-    platform,
-  } = req.body;
-
-  try {
-    // 1. Check for duplicate transaction
-    const [existing] = await connection.execute(
-      `SELECT operator_tx_id, old_balance, new_balance 
-       FROM spribetransaction 
-       WHERE provider_tx_id = ? LIMIT 1`,
-      [provider_tx_id],
-    );
-
-    if (existing.length > 0) {
-      return res.status(200).json({
-        code: 409,
-        message: "Duplicate transaction",
-        data: existing[0],
-      });
-    }
-
-    // 2. Verify user exists
-    const [users] = await connection.execute(
-      `SELECT id_user, phone, name_user, money 
-       FROM users 
-       WHERE id_user = ? LIMIT 1`,
-      [user_id],
-    );
-
-    if (users.length === 0) {
-      return res.status(200).json({
-        code: 404,
-        message: "User not found",
-      });
-    }
-
-    const user = users[0];
-    const oldBalance = Math.floor(Number(user.money) * 1000);
-    const depositAmount = Number(amount);
-
-    // 3. Validate amount
-    if (depositAmount <= 0) {
-      return res.status(200).json({
-        code: 402,
-        message: "Invalid deposit amount",
-      });
-    }
-
-    // 4. Process deposit (add balance)
-    const newBalance = oldBalance + depositAmount;
-    await connection.execute(`UPDATE users SET money = ? WHERE id_user = ?`, [
-      newBalance / 1000,
-      user_id,
-    ]);
-
-    // 5. Record transaction (type 1 = deposit)
-    const operatorTxId = `OP_TX_${Date.now()}`;
-    await connection.execute(
-      `INSERT INTO spribetransaction (
-        id_user, type, phone, name_user, provider, 
-        provider_tx_id, operator_tx_id, old_balance, 
-        new_balance, currency, deposit_amount, 
-        game, action, action_id, session_token, platform
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        user_id,
-        1,
-        user.phone,
-        user.name_user,
-        provider,
-        provider_tx_id,
-        operatorTxId,
-        oldBalance,
-        newBalance,
-        currency || "INR",
-        depositAmount,
-        game,
-        action,
-        action_id,
-        session_token,
-        platform || "desktop",
-      ],
-    );
-
-    return res.status(200).json({
-      code: 200,
-      message: "ok",
-      data: {
-        operator_tx_id: operatorTxId,
-        old_balance: oldBalance,
-        new_balance: newBalance,
-        currency: currency || "INR",
-        user_id,
-      },
-    });
-  } catch (error) {
-    console.error("Deposit processing failed:", {
-      error: error.message,
-      stack: error.stack,
-      body: req.body,
-    });
-
-    return res.status(500).json({
-      code: 500,
-      message: "Transaction failed",
-      detail:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
-  }
-};
-
 // export const spribeDeposit = async (req, res) => {
 //   // const validation = validateSpribeSignature(req);
 //   // if (!validation.valid) return res.status(200).json(validation);
@@ -735,6 +477,360 @@ export const spribeDeposit = async (req, res) => {
 //     });
 //   }
 // };
+
+export const spribeDeposit = async (req, res) => {
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
+
+  const {
+    user_id,
+    currency,
+    amount,
+    provider,
+    provider_tx_id,
+    game,
+    action,
+    action_id,
+    session_token,
+    platform,
+  } = req.body;
+
+  try {
+    // ✅ Check duplicate transaction
+    const [existingTransaction] = await connection.query(
+      "SELECT * FROM spribetransaction WHERE provider_tx_id = ?",
+      [provider_tx_id],
+    );
+
+    if (existingTransaction.length) {
+      return res.status(200).json({
+        code: 409,
+        message: "OK",
+        data: {
+          user_id,
+          operator_tx_id: existingTransaction[0].operator_tx_id,
+          provider,
+          provider_tx_id,
+          old_balance: existingTransaction[0].Number(old_balance),
+          new_balance: existingTransaction[0].Number(new_balance),
+          currency,
+        },
+      });
+    }
+
+    // ✅ Check user exists
+    const [userRows] = await connection.query(
+      "SELECT * FROM users WHERE id_user = ?",
+      [user_id],
+    );
+    if (!userRows.length) {
+      return res.status(200).json({
+        code: 401,
+        message: "Token is not valid",
+      });
+    }
+
+    const user = userRows[0];
+    const old_balance = Math.floor(Number(user.money) * 1000);
+    const betAmount = Number(amount);
+
+    // ✅ Check valid bet amount
+    if (betAmount <= 0) {
+      return res.status(200).json({
+        code: 403,
+        message: "Invalid bet amount",
+      });
+    }
+
+    // ✅ Deduct balance
+    const new_balance = old_balance - betAmount;
+    await connection.query("UPDATE users SET money = ? WHERE id_user = ?", [
+      new_balance / 1000,
+      user_id,
+    ]);
+
+    // ✅ Create transaction
+    const operator_tx_id = `OP_TX_${Date.now()}`;
+    await connection.query(
+      "INSERT INTO spribetransaction (id_user, type, phone, name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, withdrawal_amount, game, action, action_id, session_token, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        user_id,
+        0,
+        user.phone,
+        user.name_user,
+        provider,
+        provider_tx_id,
+        operator_tx_id,
+        old_balance,
+        new_balance,
+        currency || "INR",
+        betAmount,
+        game,
+        action,
+        action_id,
+        session_token,
+        platform || "desktop",
+      ],
+    );
+
+    // ✅ Success response
+    return res.status(200).json({
+      code: 200,
+      message: "OK",
+      data: {
+        operator_tx_id,
+        new_balance,
+        old_balance,
+        user_id,
+        currency: currency || "INR",
+        provider,
+        provider_tx_id,
+      },
+    });
+  } catch (error) {
+    console.error("Error in spribeDeposit:", error);
+    return res.status(200).json({
+      code: 500,
+      message: "Internal error",
+    });
+  }
+};
+
+export const spribeWithdraw = async (req, res) => {
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
+
+  const {
+    user_id,
+    currency,
+    amount,
+    provider,
+    provider_tx_id,
+    game,
+    action,
+    action_id,
+    session_token,
+    platform,
+  } = req.body;
+
+  try {
+    // ✅ Check for duplicate transaction
+    const [existingTransaction] = await connection.query(
+      "SELECT * FROM spribetransaction WHERE provider_tx_id = ?",
+      [provider_tx_id],
+    );
+
+    if (existingTransaction.length) {
+      return res.status(200).json({
+        code: 409,
+        message: "OK",
+        data: {
+          user_id,
+          operator_tx_id: existingTransaction[0].operator_tx_id,
+          provider,
+          provider_tx_id,
+          old_balance: existingTransaction[0].old_balance,
+          new_balance: existingTransaction[0].new_balance,
+          currency,
+        },
+      });
+    }
+
+    // ✅ Validate user
+    const [userRows] = await connection.query(
+      "SELECT * FROM users WHERE id_user = ?",
+      [user_id.trim()],
+    );
+    if (!userRows.length) {
+      return res.status(200).json({
+        code: 401,
+        message: "User token is invalid",
+      });
+    }
+
+    const user = userRows[0];
+    const old_balance = Math.floor(Number(user.money) * 1000);
+    const winAmount = Number(amount);
+
+    if (winAmount <= 0) {
+      return res.status(200).json({
+        code: 403,
+        message: "Invalid win amount",
+      });
+    }
+
+    // ✅ WITHDRAW from Spribe = Win → add balance
+    const new_balance = old_balance + winAmount;
+
+    await connection.query("UPDATE users SET money = ? WHERE id_user = ?", [
+      new_balance / 1000,
+      user_id.trim(),
+    ]);
+
+    // ✅ Record transaction
+    const operator_tx_id = `OP_TX_${Date.now()}`;
+    await connection.query(
+      "INSERT INTO spribetransaction (id_user, type, phone, name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, deposit_amount, game, action, action_id, session_token, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        user_id.trim(),
+        1, // 1 = withdraw type
+        user.phone,
+        user.name_user,
+        provider,
+        provider_tx_id,
+        operator_tx_id,
+        old_balance,
+        new_balance,
+        currency || "INR",
+        winAmount,
+        game,
+        action,
+        action_id,
+        session_token,
+        platform || "desktop",
+      ],
+    );
+
+    // ✅ Success response
+    return res.status(200).json({
+      code: 200,
+      message: "OK",
+      data: {
+        operator_tx_id,
+        new_balance,
+        old_balance,
+        user_id,
+        currency: currency || "INR",
+        provider,
+        provider_tx_id,
+      },
+    });
+  } catch (error) {
+    console.error("Error in spribeWithdraw:", error);
+    return res.status(200).json({
+      code: 500,
+      message: "Internal error",
+    });
+  }
+};
+
+export const spribeDeposit = async (req, res) => {
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
+
+  const {
+    user_id,
+    currency,
+    amount,
+    provider,
+    provider_tx_id,
+    game,
+    action,
+    action_id,
+    session_token,
+    platform,
+  } = req.body;
+
+  try {
+    // ✅ Check duplicate transaction
+    const [existingTransaction] = await connection.query(
+      "SELECT * FROM spribetransaction WHERE provider_tx_id = ?",
+      [provider_tx_id],
+    );
+
+    if (existingTransaction.length) {
+      return res.status(200).json({
+        code: 409,
+        message: "OK",
+        data: {
+          user_id,
+          operator_tx_id: existingTransaction[0].operator_tx_id,
+          provider,
+          provider_tx_id,
+          old_balance: existingTransaction[0].old_balance,
+          new_balance: existingTransaction[0].new_balance,
+          currency,
+        },
+      });
+    }
+
+    // ✅ Check user exists
+    const [userRows] = await connection.query(
+      "SELECT * FROM users WHERE id_user = ?",
+      [user_id],
+    );
+    if (!userRows.length) {
+      return res.status(200).json({
+        code: 401,
+        message: "Token is not valid",
+      });
+    }
+
+    const user = userRows[0];
+    const old_balance = Math.floor(Number(user.money) * 1000);
+    const winAmount = Number(amount);
+
+    // ✅ Check valid win amount
+    if (winAmount <= 0) {
+      return res.status(200).json({
+        code: 403,
+        message: "Invalid win amount",
+      });
+    }
+
+    // ✅ Add balance
+    const new_balance = old_balance + winAmount;
+    await connection.query("UPDATE users SET money = ? WHERE id_user = ?", [
+      new_balance / 1000,
+      user_id,
+    ]);
+
+    // ✅ Create transaction
+    const operator_tx_id = `OP_TX_${Date.now()}`;
+    await connection.query(
+      "INSERT INTO spribetransaction (id_user, type, phone, name_user, provider, provider_tx_id, operator_tx_id, old_balance, new_balance, currency, deposit_amount, game, action, action_id, session_token, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        user_id,
+        1, // type 1 = deposit/win
+        user.phone,
+        user.name_user,
+        provider,
+        provider_tx_id,
+        operator_tx_id,
+        old_balance,
+        new_balance,
+        currency || "INR",
+        winAmount,
+        game,
+        action,
+        action_id,
+        session_token,
+        platform || "desktop",
+      ],
+    );
+
+    // ✅ Success
+    return res.status(200).json({
+      code: 200,
+      message: "OK",
+      data: {
+        operator_tx_id,
+        new_balance,
+        old_balance,
+        user_id,
+        currency: currency || "INR",
+        provider,
+        provider_tx_id,
+      },
+    });
+  } catch (error) {
+    console.error("Error in spribeDeposit:", error);
+    return res.status(200).json({
+      code: 500,
+      message: "Internal error",
+    });
+  }
+};
 
 // export const spribeWithdraw = async (req, res) => {
 //   // const validation = validateSpribeSignature(req);
