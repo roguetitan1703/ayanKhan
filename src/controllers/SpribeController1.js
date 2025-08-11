@@ -771,12 +771,12 @@ export const spribeWithdraw = async (req, res) => {
     const betAmount = Number(amount);
 
     // ✅ Check valid bet amount
-    if (betAmount <= 0) {
-      return res.status(200).json({
-        code: 403,
-        message: "Invalid bet amount",
-      });
-    }
+    // if (betAmount <= 0) {
+    //   return res.status(200).json({
+    //     code: 403,
+    //     message: "Invalid bet amount",
+    //   });
+    // }
 
     // ✅ Deduct balance
     const new_balance = old_balance - betAmount;
