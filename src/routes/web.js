@@ -22,47 +22,68 @@ import rateLimit from "express-rate-limit";
 import jilliController from "../controllers/jilliController.js";
 import casinoController from "../controllers/casinoController.js";
 
-import spribeController from '../controllers/SpribeController.js';
+import spribeController from "../controllers/SpribeController1.js";
 import ezugiGameController from "../controllers/EzugiController.js";
-import { bgamingLaunchGame, bgamingWalletInfo } from "../controllers/bgamingController.js";
+import {
+  bgamingLaunchGame,
+  bgamingWalletInfo,
+} from "../controllers/bgamingController.js";
 import smartSoftGameController from "../controllers/SmartSoftController.js";
 import JilliGameController from "../controllers/JilliGameController.js";
 import { upload } from "./upload.js";
-import { validateInoutSignature } from '../middleware/inoutSecurity.js';
-import * as inoutController from '../controllers/inoutController.js';
+import { validateInoutSignature } from "../middleware/inoutSecurity.js";
+import * as inoutController from "../controllers/inoutController.js";
 // web.js (CommonJS)
-
-
 
 let router = express.Router();
 
-
-
-
-
-
 const initWebRouter = (app) => {
-    
-    router.get('/api/webapi/GetJilliboardGame/:gameId', middlewareController, jilliController.boardGame);
-    router.get('/api/webapi/getboardGameInfo', middlewareController, jilliController.getboardGameInfo);
-    router.get('/api/webapi/transferMoneyToMainWallet', middlewareController, jilliController.transferMoneyToMainWallet);
-    
-      
-    router.get('/api/gamelist_strip', middlewareController, jilliController.stribes);  
-     router.post('/api/gamelist_strip/callback', middlewareController, jilliController.rollbackTransaction);  
-    
-    
-     router.get('/api/webapi/rechargegets', middlewareController, userController.rechargegets);
-    
-    router.get('/api/webapi/GateGame', middlewareController, casinoController.GateGame);
-    
+  router.get(
+    "/api/webapi/GetJilliboardGame/:gameId",
+    middlewareController,
+    jilliController.boardGame,
+  );
+  router.get(
+    "/api/webapi/getboardGameInfo",
+    middlewareController,
+    jilliController.getboardGameInfo,
+  );
+  router.get(
+    "/api/webapi/transferMoneyToMainWallet",
+    middlewareController,
+    jilliController.transferMoneyToMainWallet,
+  );
+
+  router.get(
+    "/api/gamelist_strip",
+    middlewareController,
+    jilliController.stribes,
+  );
+  router.post(
+    "/api/gamelist_strip/callback",
+    middlewareController,
+    jilliController.rollbackTransaction,
+  );
+
+  router.get(
+    "/api/webapi/rechargegets",
+    middlewareController,
+    userController.rechargegets,
+  );
+
+  router.get(
+    "/api/webapi/GateGame",
+    middlewareController,
+    casinoController.GateGame,
+  );
+
   // page account
 
   //jillie game routes
   // router.get('/getAllJillieGames', jiliGamesController.getAllJillieGames);
-  
+
   // router.post('/playJillieGame', middlewareController, jiliGamesController.playJillieGame);
-  
+
   // router.post("/auth", jiliGamesController.auth);
   // router.post("/bet", jiliGamesController.bet);
   // router.post("/cancelBet", jiliGamesController.cancelBet);
@@ -112,7 +133,11 @@ const initWebRouter = (app) => {
     jdbController.gameSlotsPage(3),
   );
 
-  router.get('/jili/slotjiliCasino', middlewareController, homeController.slotjiliCasinoPage);
+  router.get(
+    "/jili/slotjiliCasino",
+    middlewareController,
+    homeController.slotjiliCasinoPage,
+  );
 
   router.get(
     "/jdb/fishing",
@@ -139,23 +164,21 @@ const initWebRouter = (app) => {
     middlewareController,
     jdbController.gameCategoriesPage(1),
   );
-  
-  
-  
+
   //admin
   router.get("/admin/login", accountController.adminLoginPage);
-  
-  
-  
+
   router.get("/jdb/quick", jdbController.gameQuickPopularList);
 
   router.get("/keFuMenu", accountController.keFuMenu);
   router.get("/login", accountController.loginPage);
+  router.post("/login", accountController.login);
+  router.post("/register", accountController.register);
   // router.get("/admin_login", accountController.loginadminPage);
   router.get("/finance_login", accountController.loginfinancePage);
   router.get("/deposit_login", accountController.logindepositPage);
   router.get("/withdraw_login", accountController.loginwithdrawPage);
-        
+
   router.get("/register", accountController.registerPage);
   router.get("/forgot", accountController.forgotPage);
   router.get("/forgot_reset", accountController.forgotResetPage);
@@ -248,17 +271,13 @@ const initWebRouter = (app) => {
     middlewareController,
     homeController.subordinatesPage,
   );
-  
-  
-//   promotion data insite subordinate
-    router.post(
+
+  //   promotion data insite subordinate
+  router.post(
     "/promotion/new-subordinate",
     middlewareController,
     userController.downlinerecharge_data,
   );
-
-
-
 
   router.get(
     "/promotion1",
@@ -325,7 +344,6 @@ const initWebRouter = (app) => {
     promotionController.promotion,
   );
 
-  
   router.get(
     "/api/activity/invitation_bonus",
     middlewareController,
@@ -441,7 +459,6 @@ const initWebRouter = (app) => {
     homeController.transactionhistoryPage,
   );
 
-  
   router.get(
     "/wallet/paynow/manual_usdt",
     middlewareController,
@@ -487,13 +504,13 @@ const initWebRouter = (app) => {
     middlewareController,
     paymentController.initiateManualUPIPayment,
   );
-  
-   router.get(
+
+  router.get(
     "/wallet/paynow/rspay2",
     middlewareController,
     paymentController.initiateManualUPIPayment2,
   );
-  
+
   router.get(
     "/wallet/paynow/bkashpay",
     middlewareController,
@@ -721,22 +738,18 @@ const initWebRouter = (app) => {
     userController.verifyCode,
   ); // register
   router.post("/api/sent/otp/verify", accountController.verifyCode);
-  router.post('/api/sent/otp/verify/reset', accountController.verifyCodePass);
+  router.post("/api/sent/otp/verify/reset", accountController.verifyCodePass);
   router.post(
     "/api/webapi/use/redenvelope",
     middlewareController,
     userController.useRedenvelope,
   ); // register
 
-router.get(
+  router.get(
     "/api/webapi/get-gift",
     middlewareController,
     userController.getGiftcode,
   ); // register
-
-
-
-
 
   // wallet
   router.post(
@@ -899,36 +912,37 @@ router.get(
     dailyController.allWithdraw,
   );
 
-// desopit manager
-router.get(
-  "/deposit/manager/index",
-  dailyController.middlewareDailyController,
-  dailyController.depositmanagerPage,
-);
-router.get("/withdraw/manager/index",
-  dailyController.middlewareDailyController,
-  dailyController.withdrawmanagerPage,
-);
-router.get(
-  "/deposit/manager/listRecharge",
-  dailyController.middlewareDailyController,
-  dailyController.depositmanagerlistRecharge,
-);
-router.get("/withdraw/manager/listWithdraw",
-  dailyController.middlewareDailyController,
-  dailyController.withdrawmanagerlistWithdraw,
-);
-router.get(
-  "/deposit/manager/allRecharge",
-  dailyController.middlewareDailyController,
-  dailyController.depositmanagerallRecharge,
-);
-router.get(
-  "/withdraw/manager/allWithdraw",
-  dailyController.middlewareDailyController,
-  dailyController.withdrawmanagerallWithdraw,
-);
-
+  // desopit manager
+  router.get(
+    "/deposit/manager/index",
+    dailyController.middlewareDailyController,
+    dailyController.depositmanagerPage,
+  );
+  router.get(
+    "/withdraw/manager/index",
+    dailyController.middlewareDailyController,
+    dailyController.withdrawmanagerPage,
+  );
+  router.get(
+    "/deposit/manager/listRecharge",
+    dailyController.middlewareDailyController,
+    dailyController.depositmanagerlistRecharge,
+  );
+  router.get(
+    "/withdraw/manager/listWithdraw",
+    dailyController.middlewareDailyController,
+    dailyController.withdrawmanagerlistWithdraw,
+  );
+  router.get(
+    "/deposit/manager/allRecharge",
+    dailyController.middlewareDailyController,
+    dailyController.depositmanagerallRecharge,
+  );
+  router.get(
+    "/withdraw/manager/allWithdraw",
+    dailyController.middlewareDailyController,
+    dailyController.withdrawmanagerallWithdraw,
+  );
 
   router.get(
     "/manager/profileMember",
@@ -981,7 +995,6 @@ router.get(
     dailyController.middlewareDailyController,
     dailyController.listBet,
   );
- 
 
   router.post(
     "/manager/settings/list",
@@ -1116,9 +1129,14 @@ router.get(
   //   adminController.middlewareAdminController,
   //   adminController.settingBank,
   // ); // get info account
-  router.post('/admin/manager/settings/bank',  upload.fields([
-    { name: 'qr_code_image', maxCount: 1 },  // Field for 'upi_qr_2'
-  ]),  adminController.middlewareAdminController, adminController.settingBank);
+  router.post(
+    "/admin/manager/settings/bank",
+    upload.fields([
+      { name: "qr_code_image", maxCount: 1 }, // Field for 'upi_qr_2'
+    ]),
+    adminController.middlewareAdminController,
+    adminController.settingBank,
+  );
 
   router.post(
     "/admin/manager/settings/cskh",
@@ -1232,7 +1250,7 @@ router.get(
     "/admin/manager/demo-user",
     adminController.middlewareAdminController,
     adminController.demoUser,
-    ); // get info account
+  ); // get info account
   router.get(
     "/admin/member/info/:id",
     adminController.middlewareAdminController,
@@ -1372,88 +1390,147 @@ router.get(
     adminController.editResult2,
   ); // get info account
 
-// my admin by jitendra
-  
-router.post(
-  "/api/webapi/isdemoregister",
-  middlewareController,
-  accountController.isdemoregister,
-); // register
-router.post(
-  "/admin/manager/finance",
-  adminController.middlewareAdminController,
-  adminController.finaceManage,
-); // register
+  // my admin by jitendra
 
+  router.post(
+    "/api/webapi/isdemoregister",
+    middlewareController,
+    accountController.isdemoregister,
+  ); // register
+  router.post(
+    "/admin/manager/finance",
+    adminController.middlewareAdminController,
+    adminController.finaceManage,
+  ); // register
 
+  //aman
+  router.get(
+    "/slotSpribe",
+    middlewareController,
+    homeController.slotspribePage,
+  );
 
-//aman
-router.get('/slotSpribe', middlewareController, homeController.slotspribePage);
+  //spribe api game
+  router.post(
+    "/playSpribeGame",
+    middlewareController,
+    spribeController.spribeLaunchGame,
+  );
+  router.post("/api/callback/spribe/info", spribeController.spribeInfo);
+  router.post("/api/callback/spribe/auth", spribeController.spribeAuth);
+  router.post("/api/callback/spribe/deposit", spribeController.spribeWithdraw);
+  router.post("/api/callback/spribe/withdraw", spribeController.spribeDeposit);
+  router.post("/api/callback/spribe", spribeController.spribeRollback);
 
-    //spribe api game
-    router.post('/playSpribeGame', middlewareController, spribeController.spribeLaunchGame);
-    router.post('/api/callback/spribe/info', spribeController.spribeInfo);
-    router.post('/api/callback/spribe/auth', spribeController.spribeAuth);
-    router.post('/api/callback/spribe/deposit', spribeController.spribeWithdraw);
-    router.post('/api/callback/spribe/withdraw', spribeController.spribeDeposit);
-    
-    router.post('/api/callback/spribe', spribeController.spribeRollback);
-    
-//https://75club.games/api/callback/spribe
-    //ezugi
-    router.post('/playEzugiGame', middlewareController, ezugiGameController.ezugiLaunchGame);
-    router.post('/api/callback/ezugi/auth', ezugiGameController.ezugiAuth);
-    router.post('/api/callback/ezugi/deposit', ezugiGameController.ezugiWithdraw);
-    router.post('/api/callback/ezugi/withdraw', ezugiGameController.ezugiDeposit);
-    router.post('/api/callback/ezugi/rollback', ezugiGameController.ezugiRollback);
+  router.post(
+    "/api/callback/spribe/freebets",
+    spribeController.spribeFreebetInfo,
+  );
+  router.post(
+    "/api/callback/spribe/freebets/create",
+    spribeController.spribeAddFreebet,
+  );
+  router.post(
+    "/api/callback/spribe/freebets/cancel",
+    spribeController.spribeCancelFreebet,
+  );
+  //https://75club.games/api/callback/spribe
+  //ezugi
+  router.post(
+    "/playEzugiGame",
+    middlewareController,
+    ezugiGameController.ezugiLaunchGame,
+  );
+  router.post("/api/callback/ezugi/auth", ezugiGameController.ezugiAuth);
+  router.post("/api/callback/ezugi/deposit", ezugiGameController.ezugiWithdraw);
+  router.post("/api/callback/ezugi/withdraw", ezugiGameController.ezugiDeposit);
+  router.post(
+    "/api/callback/ezugi/rollback",
+    ezugiGameController.ezugiRollback,
+  );
 
+  //smartSoft
+  router.post(
+    "/playSmartSoftGame",
+    middlewareController,
+    smartSoftGameController.smartSoftLaunchGame,
+  );
 
+  router.post(
+    "/api/callback/smartSoft/ActivateSession",
+    smartSoftGameController.ActivateSession,
+  );
 
-    //smartSoft
-    router.post('/playSmartSoftGame', middlewareController, smartSoftGameController.smartSoftLaunchGame);
+  router.get(
+    "/api/callback/smartSoft/GetBalance",
+    smartSoftGameController.smartSoftGetBalance,
+  );
 
-    router.post('/api/callback/smartSoft/ActivateSession', smartSoftGameController.ActivateSession);
+  router.post(
+    "/api/callback/smartSoft/deposit",
+    smartSoftGameController.smartSoftDeposit,
+  );
 
-    router.get('/api/callback/smartSoft/GetBalance', smartSoftGameController.smartSoftGetBalance);
+  router.post(
+    "/api/callback/smartSoft/withdraw",
+    smartSoftGameController.smartSoftWithdraw,
+  );
 
-    router.post('/api/callback/smartSoft/deposit', smartSoftGameController.smartSoftDeposit);
+  router.post(
+    "/api/callback/smartSoft/RollbackTransaction",
+    smartSoftGameController.smartSoftRollback,
+  );
 
-    router.post('/api/callback/smartSoft/withdraw', smartSoftGameController.smartSoftWithdraw);
+  //bgame
+  router.get("/api/walletInfo", bgamingWalletInfo);
+  router.get("/bgamingLaunchGame", bgamingLaunchGame);
 
-    router.post('/api/callback/smartSoft/RollbackTransaction', smartSoftGameController.smartSoftRollback);
-        
-    //bgame
-    router.get('/api/walletInfo', bgamingWalletInfo);
-    router.get('/bgamingLaunchGame', bgamingLaunchGame);
+  //jillie game routes
+  router.get("/getAllJillieGames", JilliGameController.getAllJillieGames);
+  router.post(
+    "/playJillieGame",
+    middlewareController,
+    JilliGameController.playJillieGame,
+  );
+  router.post("/api/callback/jilli/auth", JilliGameController.jillieAuth);
+  router.post("/api/callback/jilli/bet", JilliGameController.jillieBet);
+  router.post(
+    "/api/callback/jilli/cancelBet",
+    JilliGameController.jillieCancelBet,
+  );
+  router.post(
+    "/api/callback/jilli/sessionBet",
+    JilliGameController.jillieSessionBet,
+  );
+  router.post(
+    "/api/callback/jilli/cancelSessionBet",
+    JilliGameController.jillieCancelSessionBet,
+  );
+  router.post(
+    "/getSinglePlyerBetRecord",
+    middlewareController,
+    JilliGameController.getSinglePlyerBetRecord,
+  );
 
-
-    
-     //jillie game routes
-     router.get('/getAllJillieGames', JilliGameController.getAllJillieGames);
-     router.post('/playJillieGame', middlewareController, JilliGameController.playJillieGame);
-     router.post('/api/callback/jilli/auth', JilliGameController.jillieAuth);
-     router.post('/api/callback/jilli/bet', JilliGameController.jillieBet);
-     router.post('/api/callback/jilli/cancelBet', JilliGameController.jillieCancelBet);
-     router.post('/api/callback/jilli/sessionBet', JilliGameController.jillieSessionBet);
-     router.post('/api/callback/jilli/cancelSessionBet', JilliGameController.jillieCancelSessionBet);
-     router.post('/getSinglePlyerBetRecord',middlewareController, JilliGameController.getSinglePlyerBetRecord);
-
-
-
-    router.post('/admin/manager/settings/need', adminController.middlewareAdminController, adminController.settingneed);
-    
+  router.post(
+    "/admin/manager/settings/need",
+    adminController.middlewareAdminController,
+    adminController.settingneed,
+  );
 
   router.post(
     "/api/admin/update-level",
     adminController.middlewareAdminController,
     adminController.adminUpdateLevel,
   ); // get info account
-  
-  
 
   // == In-Out Games Provider Routes ==
-  router.post('/api/callback/inout', validateInoutSignature, inoutController.handleCallback);
-  router.get('/inout/launch', inoutController.generateLaunchUrl);
+  router.post(
+    "/api/callback/inout",
+    validateInoutSignature,
+    inoutController.handleCallback,
+  );
+  router.get("/inout/launch", inoutController.generateLaunchUrl);
 
   return app.use("/", router);
 };

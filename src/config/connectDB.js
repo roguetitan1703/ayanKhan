@@ -1,11 +1,10 @@
 import mysql from "mysql2/promise";
 
-// LOCAL DEVELOPMENT DATABASE (FOR TESTING)
 const connection = mysql.createPool({
-  host: 'localhost',
-  user: '75new',
-  password: 'Pziw7siFNKBb4nJP',
-  database: '75new',
+  host: "localhost",
+  user: "75new",
+  password: "Pziw7siFNKBb4nJP",
+  database: "75new",
 });
 
 // // LOCAL DEVELOPMENT DATABASE (FOR TESTING)
@@ -15,8 +14,6 @@ const connection = mysql.createPool({
 //   password: 'password',
 //   database: 'ayanKhan',
 // });
-
-
 
 // REMOTE PRODUCTION SERVER (ONLINE) - UNCOMMENT WHEN REMOTE ACCESS IS AVAILABLE
 // const connection = mysql.createPool({
