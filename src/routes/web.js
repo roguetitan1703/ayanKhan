@@ -1416,22 +1416,28 @@ const initWebRouter = (app) => {
     middlewareController,
     spribeController.spribeLaunchGame,
   );
-  router.post("/api/callback/spribe/info", spribeController.spribeInfo);
-  router.post("/api/callback/spribe/auth", spribeController.spribeAuth);
-  router.post("/api/callback/spribe/withdraw", spribeController.spribeWithdraw);
-  router.post("/api/callback/spribe/deposit", spribeController.spribeDeposit);
-  router.post("/api/callback/spribe", spribeController.spribeRollback);
+  router.post("/api/v1/callback/spribe/info", spribeController.spribeInfo);
+  router.post("/api/v1/callback/spribe/auth", spribeController.spribeAuth);
+  router.post(
+    "/api/v1/callback/spribe/withdraw",
+    spribeController.spribeWithdraw,
+  );
+  router.post(
+    "/api/v1/callback/spribe/deposit",
+    spribeController.spribeDeposit,
+  );
+  router.post("/api/v1/callback/spribe", spribeController.spribeRollback);
 
   router.post(
-    "/api/callback/spribe/freebets",
+    "/api/v1/callback/spribe/freebets",
     spribeController.spribeFreebetInfo,
   );
   router.post(
-    "/api/callback/spribe/freebets/create",
+    "/api/v1/callback/spribe/freebets/create",
     spribeController.spribeAddFreebet,
   );
   router.post(
-    "/api/callback/spribe/freebets/cancel",
+    "/api/v1/callback/spribe/freebets/cancel",
     spribeController.spribeCancelFreebet,
   );
   //https://75club.games/api/callback/spribe

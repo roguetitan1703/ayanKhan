@@ -173,13 +173,13 @@ export const spribeLaunchGame = async (req, res) => {
     const launchParams = new URLSearchParams({
       user: String(user.id_user),
       token: token,
-      currency: CURRENCY,
       lang: LANG,
-      return_url: CALLBACK_URL,
+      currency: CURRENCY,
+      //return_url: CALLBACK_URL,
       operator: OPERATOR_KEY,
       account_history_url: CALLBACK_URL,
-      irc_duration: "1800", // 30 minutes in seconds
-      irc_elapsed: "600", // 10 minutes in seconds
+      //irc_duration: "1800", // 30 minutes in seconds
+      //irc_elapsed: "600", // 10 minutes in seconds
     });
 
     const launchUrl = `${API_URL}/${gameName}?${launchParams.toString()}`;
