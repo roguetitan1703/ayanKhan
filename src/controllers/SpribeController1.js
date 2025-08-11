@@ -2,8 +2,8 @@ import connection from "../config/connectDB.js";
 import crypto from "crypto";
 
 // Updated configuration from Spribe
-const SECRET_TOKEN = "P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ";
-const OPERATOR_KEY = "reddybook75new";
+const SECRET_TOKEN = "8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC";
+const OPERATOR_KEY = "75clubgames";
 const API_URL = "https://dev-test.spribe.io/games/launch";
 const GAME_API_URL = "https://secure-ga.staging.spribe.io/v3";
 const return_url = "https://75club.games/";
@@ -228,11 +228,7 @@ export const spribeLaunchGame = async (req, res) => {
     //const launchUrl = `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`;
 
     return res.json({
-      success: true,
-      data: {
-        //launchUrl: launchUrl.toString(),
-        launchUrl: `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`,
-      },
+      data: `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`,
     });
   } catch (error) {
     console.error("Error launching Spribe game:", error);
