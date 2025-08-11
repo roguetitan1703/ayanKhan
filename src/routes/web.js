@@ -1418,8 +1418,8 @@ const initWebRouter = (app) => {
   );
   router.post("/api/callback/spribe/info", spribeController.spribeInfo);
   router.post("/api/callback/spribe/auth", spribeController.spribeAuth);
-  router.post("/api/callback/spribe/deposit", spribeController.spribeWithdraw);
-  router.post("/api/callback/spribe/withdraw", spribeController.spribeDeposit);
+  router.post("/api/callback/spribe/withdraw", spribeController.spribeWithdraw);
+  router.post("/api/callback/spribe/deposit", spribeController.spribeDeposit);
   router.post("/api/callback/spribe", spribeController.spribeRollback);
 
   router.post(
