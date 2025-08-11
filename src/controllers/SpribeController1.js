@@ -213,23 +213,25 @@ export const spribeLaunchGame = async (req, res) => {
     );
 
     // Create launch URL with all required parameters
-    const launchUrl = new URL(`${API_URL}/${game}`);
-    launchUrl.searchParams.append("user", userId);
-    launchUrl.searchParams.append("token", token);
-    launchUrl.searchParams.append("currency", currency);
-    launchUrl.searchParams.append("lang", "EN");
-    launchUrl.searchParams.append("return_url", return_url);
-    launchUrl.searchParams.append("operator", OPERATOR_KEY);
+    // const launchUrl = new URL(`${API_URL}/${game}`);
+    // launchUrl.searchParams.append("user", userId);
+    // launchUrl.searchParams.append("token", token);
+    // launchUrl.searchParams.append("currency", currency);
+    // launchUrl.searchParams.append("lang", "EN");
+    // launchUrl.searchParams.append("return_url", return_url);
+    // launchUrl.searchParams.append("operator", OPERATOR_KEY);
     // Optional parameters can be added here if needed
     // launchUrl.searchParams.append('account_history_url', '...');
     // launchUrl.searchParams.append('irc_duration', '...');
     // launchUrl.searchParams.append('irc_elapsed', '...');
 
+    //const launchUrl = `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`;
+
     return res.json({
       success: true,
       data: {
-        launchUrl: launchUrl.toString(),
-        demoUrl: `https://demo.spribe.io/launch/${game}?currency=${currency}&lang=EN&return_url=${return_url}`,
+        //launchUrl: launchUrl.toString(),
+        launchUrl: `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`,
       },
     });
   } catch (error) {
