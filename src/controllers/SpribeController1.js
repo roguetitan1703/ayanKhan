@@ -228,7 +228,7 @@ export const spribeLaunchGame = async (req, res) => {
     //const launchUrl = `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`;
 
     return res.json({
-      data: `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`,
+      Data: `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`,
     });
   } catch (error) {
     console.error("Error launching Spribe game:", error);
