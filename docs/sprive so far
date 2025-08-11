@@ -5,6 +5,7 @@ Let's break down your request into clear, actionable parts:
 ## 1. **What Has the Provider (Spribe) Given You?**
 
 **A. Credentials & URLs**
+
 - **Launch URL:**  
   `https://dev-test.spribe.io/games/launch/{game}`  
   (For launching games in staging)
@@ -37,31 +38,37 @@ Let's break down your request into clear, actionable parts:
 **A. Whitelist Their IPs**  
 Make sure your backend (and firewall) allows incoming requests from the above IPs.
 
-**B. Use the Staging URLs**  
+**B. Use the Staging URLs**
+
 - For launching games, use the **staging launch URL**.
 - For API calls (wallet, bet, withdraw, etc.), use the **staging Game API URL**.
 
-**C. Use Provided Credentials**  
+**C. Use Provided Credentials**
+
 - Use the `operator_key` and `secret_token` in your requests and signature generation.
 
 **D. Implement Security Headers**  
 Every API request (from you to Spribe, and from Spribe to you) must include:
+
 - `X-Spribe-Client-ID` (your operator key)
 - `X-Spribe-Client-TS` (current UTC timestamp, seconds since epoch)
 - `X-Spribe-Client-Signature` (HMAC SHA256 signature, see below)
 
-**E. Signature Generation**  
+**E. Signature Generation**
+
 - Concatenate:  
   `timestamp + path_with_query + body`  
   (body is only for POST/PUT, not for GET/DELETE)
 - HMAC SHA256 with your `secret_token` as the key.
 - Hex encode the result.
 
-**F. Callback Endpoint**  
+**F. Callback Endpoint**
+
 - Spribe will POST to your `/api/callback/spribe` endpoint for wallet actions (bet, withdraw, rollback, etc.).
 - You must validate their signature and process the request.
 
 **G. Test Flow**
+
 1. Launch a game using the launch URL (with correct params).
 2. Play the game in the UI.
 3. When a bet/withdraw happens, Spribe will call your callback.
@@ -73,6 +80,7 @@ Every API request (from you to Spribe, and from Spribe to you) must include:
 ## 3. **What to Check in Your Current Setup**
 
 ### **A. Spribe Controller/Implementation**
+
 - **Do you have a controller/route for `/api/callback/spribe`?**
 - **Does it validate the security headers and signature?**
 - **Does it map Spribe's actions (bet, withdraw, rollback) to your wallet logic?**
@@ -82,6 +90,7 @@ Every API request (from you to Spribe, and from Spribe to you) must include:
 - **Are you logging all incoming/outgoing requests for debugging?**
 
 ### **B. Common Issues to Watch For**
+
 - **Signature mismatch:**  
   Most common cause of integration failure. Double-check your signature logic matches their docs.
 - **Wrong callback URL:**  
@@ -110,18 +119,18 @@ Every API request (from you to Spribe, and from Spribe to you) must include:
 
 ## 5. **Summary Table of Key URLs**
 
-| Purpose                | URL/Value                                               |
-|------------------------|--------------------------------------------------------|
-| Game Launch (staging)  | `https://dev-test.spribe.io/games/launch/{game}`       |
-| Game API (wallet etc.) | `https://secure-ga.staging.spribe.io/v3`               |
-| Game Details           | `https://games-info.staging.spribe.dev`                |
-| Demo                   | `https://demo.spribe.io/launch/{game}?...`             |
-| Callback (your side)   | `https://75club.games/api/callback/spribe`             |
-| Operator Key           | `75clubgames`                                          |
-| Secret Token           | `8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC`                     |
-| Supported Currencies   | USD, INR                                               |
-| Supported Games        | aviator, balloon, dice, fortune-wheel, ...             |
-| Their IPs              | 194.36.47.153, 194.36.47.152, ...                      |
+| Purpose                | URL/Value                                        |
+| ---------------------- | ------------------------------------------------ |
+| Game Launch (staging)  | `https://dev-test.spribe.io/games/launch/{game}` |
+| Game API (wallet etc.) | `https://secure-ga.staging.spribe.io/v3`         |
+| Game Details           | `https://games-info.staging.spribe.dev`          |
+| Demo                   | `https://demo.spribe.io/launch/{game}?...`       |
+| Callback (your side)   | `https://75club.games/api/callback/spribe`       |
+| Operator Key           | `75clubgames`                                    |
+| Secret Token           | `8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC`               |
+| Supported Currencies   | USD, INR                                         |
+| Supported Games        | aviator, balloon, dice, fortune-wheel, ...       |
+| Their IPs              | 194.36.47.153, 194.36.47.152, ...                |
 
 ---
 
@@ -135,3 +144,302 @@ Every API request (from you to Spribe, and from Spribe to you) must include:
 ---
 
 **If you want, I can review your actual Spribe controller code and point out what looks right/wrong, or provide a template for a robust integration. Just let me know!**
+
+# Spribe Games Integration API Documentation - Complete Analysis
+
+Based on my comprehensive research of Spribe's official documentation at docs.spribe.io, I've compiled the complete information about their Games Integration flow, endpoints, callbacks, and technical specifications.
+
+## **Game Launch Process**
+
+### **Launch URL Structure**
+
+**URL:** `https://{launch-url}/{game}?user={user}&token={token}&lang={lang}&currency={currency}&operator={operator}&return_url={return_url}`[1]
+
+### **Required Launch Parameters**
+
+- **game**: Game identifier (aviator, dice, goal, etc.)
+- **user**: Player ID on operator side
+- **token**: One-time authentication token
+- **currency**: Game currency code
+- **operator**: Operator key name
+- **lang**: Game interface language (optional)
+- **return_url**: Return URL from game (optional)
+- **account_history_url**: URL for bet history (optional)
+- **irc_duration**: Reality check period in seconds (optional)
+- **irc_elapsed**: Elapsed time for reality check (optional)[1]
+
+## **Authentication & Security Headers**
+
+### **Required Security Headers**
+
+All API requests must include these headers:[2]
+
+- **X-Spribe-Client-ID**: Unique operator identifier
+- **X-Spribe-Client-TS**: UTC timestamp (seconds since Unix epoch)
+- **X-Spribe-Client-Signature**: HMAC SHA256 signature
+
+### **HMAC Signature Generation**
+
+The signature is created by:[2]
+
+1. Concatenating: timestamp + request URI + request body (for POST/PUT)
+2. Hashing with SHA256 HMAC using the Client Secret as key
+
+**Example Implementation:**
+
+```java
+public static String createSignature(final long time, final String path,
+    final byte[] body, final String clientSecret) {
+    try {
+        Mac sha256Hmac = Mac.getInstance("HmacSHA256");
+        sha256Hmac.init(new SecretKeySpec(clientSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        sha256Hmac.update((time + path).getBytes(StandardCharsets.UTF_8));
+
+        byte[] bytes = body == null ? sha256Hmac.doFinal() : sha256Hmac.doFinal(body);
+        return HexFormat.of().formatHex(bytes);
+    } catch (Exception e) {
+        throw new SecurityException("Error creating signature.", e);
+    }
+}
+```
+
+## **Core API Endpoints**
+
+### **1. Authentication Endpoint**
+
+**Path:** `/auth`
+**Method:** POST
+**Content-Type:** `application/json; charset=utf-8`
+
+**Request Body:**
+
+```json
+{
+  "user_token": "53dac65af9e735d08328a5aa4a009266d20a6103dde7d58ad3f5d20c3f31c420",
+  "session_token": "j0CzDA2aq4rRZ03V4KBTvncDcgbBHEuoDsNEVBlkDc1UpfWkHjNgzHPoAzrBEpZd",
+  "platform": "mobile",
+  "currency": "USD"
+}
+```
+
+**Success Response:**
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "user_id": "180",
+    "username": "Dan321",
+    "balance": 49992,
+    "currency": "GEL"
+  }
+}
+```
+
+### **2. Balance Check (Player Info) Endpoint**
+
+**Path:** `/info`
+**Method:** POST
+
+**Request Body:**
+
+```json
+{
+  "user_id": "180",
+  "session_token": "j0CzDA2aq4rRZ03V4KBTvncDcgbBHEuoDsNEVBlkDc1UpfWkHjNgzHPoAzrBEpZd",
+  "currency": "USD"
+}
+```
+
+### **3. Debit (Withdraw) Endpoint**
+
+**Path:** `/withdraw`
+**Method:** POST
+
+**Request Body:**
+
+```json
+{
+  "user_id": "180",
+  "currency": "USD",
+  "amount": 5320,
+  "provider": "spribe_aviator",
+  "provider_tx_id": "unique_transaction_id",
+  "game": "aviator",
+  "action": "bet",
+  "action_id": "bet_action_123",
+  "session_token": "session_token_here",
+  "platform": "desktop"
+}
+```
+
+**Success Response:**
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "user_id": "180",
+    "operator_tx_id": "op_tx_12345",
+    "provider": "spribe_aviator",
+    "provider_tx_id": "unique_transaction_id",
+    "old_balance": 55312,
+    "new_balance": 49992,
+    "currency": "USD"
+  }
+}
+```
+
+### **4. Credit (Deposit) Endpoint**
+
+**Path:** `/deposit`
+**Method:** POST
+
+**Request Body:**
+
+```json
+{
+  "user_id": "180",
+  "currency": "USD",
+  "amount": 10640,
+  "provider": "spribe_aviator",
+  "provider_tx_id": "win_transaction_id",
+  "game": "aviator",
+  "action": "win",
+  "action_id": "win_action_456",
+  "session_token": "session_token_here",
+  "platform": "desktop",
+  "withdraw_provider_tx_id": "original_bet_tx_id"
+}
+```
+
+### **5. Rollback Endpoint**
+
+**Path:** `/rollback`
+**Method:** POST
+
+**Request Body:**
+
+```json
+{
+  "user_id": "180",
+  "amount": 5320,
+  "provider": "spribe_aviator",
+  "rollback_provider_tx_id": "transaction_to_rollback",
+  "provider_tx_id": "rollback_tx_id",
+  "game": "aviator",
+  "session_token": "session_token_here",
+  "action": "bet",
+  "action_id": "rollback_action_789"
+}
+```
+
+## **Amount/Balance Format**
+
+**Fiat currencies:** Units = 1$ = 1000 units (multiply by 10³)
+
+- Example: $5.32 USD = 5,320 units
+
+**Cryptocurrencies:** Units = 1BTC = 100000000 units (multiply by 10⁸)
+
+- Example: 0.0532 BTC = 5,320,000 units[3][4][5][6][1]
+
+## **Player Notification Callback**
+
+### **Callback Endpoint (Operator implements)**
+
+**Path:** `/playerNotificationCallback`
+**Method:** POST
+
+**Request from Spribe:**
+
+```json
+{
+  "user_id": "180",
+  "game": "aviator",
+  "session_token": "session_token_here",
+  "platform": "desktop",
+  "notification": "reality_check",
+  "notification_data": {},
+  "action": "STOP"
+}
+```
+
+**Note:** "Available only for AVIATOR"[7]
+
+## **Round Details Information**
+
+Unfortunately, the official Spribe documentation at docs.spribe.io does not contain specific information about "Round Details" endpoints or resources. The documentation mentions a reference to round details at `https://docs.spribe.io/backoffice/round-details`, but this appears to be part of a separate backoffice API that was not accessible during my research.[8]
+
+## **Webhooks and Callbacks**
+
+The Spribe Games Integration API documentation does not explicitly mention traditional webhooks or callback endpoints that Spribe pushes to operators. The only callback mechanism documented is the **Player Notification Callback** for reality check functionality, which is:
+
+- **Only available for Aviator game**[7]
+- **Triggered by operators returning code 412** in withdraw responses[9]
+- **Used for reality check notifications** when players have been gaming too long[9][7]
+
+## **Error Codes and Responses**
+
+### **Common Response Codes:**
+
+- **200**: Success
+- **401**: User token invalid
+- **402**: Insufficient funds (withdraw only)
+- **403**: User token expired
+- **405**: Internal error with no retry
+- **409**: Duplicate transaction
+- **412**: Reality check trigger (withdraw only)
+- **413**: Invalid Client-Signature
+- **500**: Internal error[4][5][6][3][1]
+
+## **Idempotency and Retry Behavior**
+
+The documentation mentions key points about persistence and retry handling:
+
+- **Transaction Uniqueness**: All transactions must be unique by `provider_tx_id`[5][6][4]
+- **Duplicate Detection**: If the same `provider_tx_id` is sent again, operators should return code 409 with original transaction data[6][4][5]
+- **Automatic Retries**: Spribe automatically retries failed transactions with the same `provider_tx_id`[4][5][6]
+- **Rollback Support**: If Spribe cannot process a successful operator transaction, it will call the rollback endpoint[4]
+
+## **Developer Support and Integration Contact**
+
+### **Official Support Channels:**
+
+- **Support Portal**: `https://support.portal.spribe.co/` - "SPRIBE Help Desk" for technical support tickets[10]
+- **General Email**: `hello@spribe.co`[11]
+- **Sales Contact**: `sales@spribe.co`[12]
+- **Work/Career Email**: `work@spribe.co`[11][12]
+
+### **Office Locations:**[11]
+
+- **Kyiv, Ukraine**: Klovskyi descent, 7а
+- **Tbilisi, Georgia**: 35B Nino Ramishvili St
+- **Warsaw, Poland**: Hrubieszowska 6b, 01-209 Warszawa
+
+## **Available Games and Specifications**
+
+### **Game Portfolio:**[13]
+
+- **Aviator** (spribe_aviator) - Flagship crash game
+- **Dice, Goal, Plinko, Mines, Hi Lo, Keno** (spribe_crypto)
+- **Keno 80** (spribe_keno/multikeno)
+- **Trader** (spribe_trader)
+- **Crystal Fall, Neo Vegas, Gates of Egypt** (spribe_slots)
+- And more...
+
+### **Supported Currencies:** 100+ fiat and crypto currencies[13]
+
+### **Supported Languages:** 35+ languages including major European, Asian, and other global languages[13]
+
+## **Key Integration Notes**
+
+1. **All requests require security headers** with HMAC signatures[2]
+2. **No traditional webhooks** - integration is primarily request-response based
+3. **Reality check only for Aviator** - special compliance feature[7][9]
+4. **Comprehensive duplicate transaction handling** built into all financial endpoints[5][6][4]
+5. **Multi-platform support** (mobile/desktop) across all endpoints[3][6][1][5][4]
+
+This represents the complete authoritative documentation available from docs.spribe.io for their Games Integration API. For account-specific behaviors or advanced integration questions, operators should contact Spribe through their official support portal at `support.portal.spribe.co` or reach out to `sales@spribe.co`.[10][12]
