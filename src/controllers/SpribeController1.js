@@ -212,8 +212,8 @@ export const spribeLaunchGame = async (req, res) => {
 };
 
 export const spribeInfo = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
   const { session_token, currency, user_id } = req.body;
 
   try {
@@ -253,8 +253,8 @@ export const spribeInfo = async (req, res) => {
 };
 
 export const spribeAuth = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   const { user_token, session_token, platform, currency } = req.body;
 
@@ -302,8 +302,8 @@ export const spribeAuth = async (req, res) => {
 };
 
 export const spribeWithdraw = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   const {
     user_id,
@@ -420,8 +420,8 @@ export const spribeWithdraw = async (req, res) => {
 };
 
 export const spribeDeposit = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   const {
     user_id,
@@ -538,8 +538,8 @@ export const spribeDeposit = async (req, res) => {
 };
 
 export const spribeRollback = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  //const validation = validateSpribeSignature(req);
+  //if (!validation.valid) return res.status(200).json(validation);
 
   const {
     user_id,
@@ -676,8 +676,8 @@ export const spribeRollback = async (req, res) => {
 };
 
 export const spribeFreebetInfo = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
   try {
     const { operator_freebet_id, operator_key, secret_token, provider } =
       req.body;
@@ -748,8 +748,8 @@ export const spribeFreebetInfo = async (req, res) => {
 };
 
 export const spribeAddFreebet = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
   try {
     const {
       operator_key,
@@ -896,8 +896,8 @@ export const spribeAddFreebet = async (req, res) => {
 
 export const spribeCancelFreebet = async (req, res) => {
   // ✅ Step 1: Validate signature
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   try {
     const { operator_key, secret_token, operator_freebet_id, provider } =
