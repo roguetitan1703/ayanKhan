@@ -2,8 +2,8 @@ import connection from "../config/connectDB.js";
 import crypto from "crypto";
 
 // Updated configuration from Spribe
-const SECRET_TOKEN = "8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC";
-const OPERATOR_KEY = "75clubgames";
+const SECRET_TOKEN = "P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ";
+const OPERATOR_KEY = "reddybook75new";
 const API_URL = "https://dev-test.spribe.io/games/launch";
 const GAME_API_URL = "https://secure-ga.staging.spribe.io/v3";
 const return_url = "https://75club.games/";
@@ -24,83 +24,6 @@ const generateHashSignature = (token, timestamp) => {
     .update(payload)
     .digest("base64");
 };
-
-// Validate Spribe signature for incoming requests per Spribe documentation
-// export const validateSpribeSignature = (req) => {
-//   const clientId = req.headers["x-spribe-client-id"];
-//   const timestamp = req.headers["x-spribe-client-ts"];
-//   const signature = req.headers["x-spribe-client-signature"];
-
-//   // Log validation attempt
-//   console.log("[SPRIBE][SIGNATURE_DEBUG] Validation attempt", {
-//     clientId,
-//     timestamp,
-//     signature,
-//     url: req.originalUrl,
-//     method: req.method,
-//     body: req.body,
-//   });
-
-//   // Check for required headers
-//   if (!clientId || !timestamp || !signature) {
-//     console.log("[SPRIBE][SIGNATURE_ERROR] Missing required headers");
-//     return {
-//       valid: false,
-//       code: 413,
-//       message:
-//         "Missing required headers: X-Spribe-Client-ID, X-Spribe-Client-TS, or X-Spribe-Client-Signature",
-//     };
-//   }
-
-//   // Verify client ID
-//   if (clientId !== OPERATOR_KEY) {
-//     console.log("[SPRIBE][SIGNATURE_ERROR] Invalid Client ID", { clientId });
-//     return {
-//       valid: false,
-//       code: 413,
-//       message: "Invalid X-Spribe-Client-ID",
-//     };
-//   }
-
-//   // Get the request path with query parameters (without domain)
-//   const pathWithQuery = req.originalUrl;
-
-//   // Get the raw body from middleware
-//   const rawBody = req.rawBody
-//     ? req.rawBody.toString("utf8")
-//     : JSON.stringify(req.body, null, 0);
-
-//   // Concatenate timestamp, path, and body as per Spribe documentation
-//   const stringToSign = `${timestamp}${pathWithQuery}${rawBody}`;
-//   console.log("[SPRIBE][SIGNATURE_DEBUG] String to sign", {
-//     stringToSign,
-//     rawBody,
-//   });
-
-//   // Generate HMAC SHA256 signature using client secret
-//   const calculatedSignature = crypto
-//     .createHmac("sha256", SECRET_TOKEN)
-//     .update(stringToSign)
-//     .digest("hex");
-
-//   console.log("[SPRIBE][SIGNATURE_DEBUG] Signature comparison", {
-//     calculatedSignature,
-//     receivedSignature: signature,
-//     isValid: calculatedSignature === signature,
-//   });
-
-//   // Compare signatures
-//   if (calculatedSignature !== signature) {
-//     console.log("[SPRIBE][SIGNATURE_ERROR] Signature mismatch");
-//     return {
-//       valid: false,
-//       code: 413,
-//       message: "Invalid Client-Signature",
-//     };
-//   }
-
-//   return { valid: true };
-// };
 
 // Validate Spribe signature for incoming requests per Spribe documentation
 export const validateSpribeSignature = (req) => {
@@ -241,8 +164,8 @@ export const spribeLaunchGame = async (req, res) => {
 };
 
 export const spribeInfo = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
   const { session_token, currency, user_id } = req.body;
 
   try {
@@ -282,8 +205,8 @@ export const spribeInfo = async (req, res) => {
 };
 
 export const spribeAuth = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   const { user_token, session_token, platform, currency } = req.body;
 
@@ -331,8 +254,8 @@ export const spribeAuth = async (req, res) => {
 };
 
 export const spribeDeposit = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   const {
     user_id,
@@ -449,8 +372,8 @@ export const spribeDeposit = async (req, res) => {
 };
 
 export const spribeWithdraw = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   const {
     user_id,
@@ -567,8 +490,8 @@ export const spribeWithdraw = async (req, res) => {
 };
 
 export const spribeRollback = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  //const validation = validateSpribeSignature(req);
+  //if (!validation.valid) return res.status(200).json(validation);
 
   const {
     user_id,
@@ -705,8 +628,8 @@ export const spribeRollback = async (req, res) => {
 };
 
 export const spribeFreebetInfo = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
   try {
     const { operator_freebet_id, operator_key, secret_token, provider } =
       req.body;
@@ -777,8 +700,8 @@ export const spribeFreebetInfo = async (req, res) => {
 };
 
 export const spribeAddFreebet = async (req, res) => {
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
   try {
     const {
       operator_key,
@@ -925,8 +848,8 @@ export const spribeAddFreebet = async (req, res) => {
 
 export const spribeCancelFreebet = async (req, res) => {
   // ✅ Step 1: Validate signature
-  const validation = validateSpribeSignature(req);
-  if (!validation.valid) return res.status(200).json(validation);
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
 
   try {
     const { operator_key, secret_token, operator_freebet_id, provider } =
