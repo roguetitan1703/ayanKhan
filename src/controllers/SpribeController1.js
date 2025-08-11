@@ -174,11 +174,7 @@ export const spribeLaunchGame = async (req, res) => {
     });
 
     return res.json({
-      success: true,
-      data: {
-        launchUrl: launchUrl.toString(),
-        demoUrl: `${DEMO_URL}/${gameName}?currency=${CURRENCY}&lang=${LANG}&return_url=${CALLBACK_URL}`,
-      },
+      Data: launchUrl,
     });
   } catch (error) {
     console.error("[SPRIBE][LAUNCH_ERROR] Error launching game:", error);
