@@ -1426,7 +1426,10 @@ const initWebRouter = (app) => {
     "/api/v1/callback/spribe/deposit",
     spribeController.spribeDeposit,
   );
-  router.post("/api/v1/callback/spribe", spribeController.spribeRollback);
+  router.post(
+    "/api/v1/callback/spribe/rollback",
+    spribeController.spribeRollback,
+  );
 
   router.post(
     "/api/v1/callback/spribe/freebets",
