@@ -227,12 +227,12 @@ export const spribeAuth = async (req, res) => {
     const user = userRows[0];
 
     // Optional: Expiry check
-    if (user.token_expiry && new Date(user.token_expiry) < new Date()) {
-      return res.status(200).json({
-        code: 403,
-        message: "User token is expired",
-      });
-    }
+    // if (user.token_expiry && new Date(user.token_expiry) < new Date()) {
+    //   return res.status(200).json({
+    //     code: 403,
+    //     message: "User token is expired",
+    //   });
+    // }
 
     return res.status(200).json({
       code: 200,
