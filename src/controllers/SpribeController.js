@@ -1,6 +1,7 @@
 import axios from "axios";
 import connection from "../config/connectDB.js";
 import crypto from "crypto";
+import { logToFile } from "../utils/simpleLogger.js";
 
 const SECRET_TOKEN = "8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC";
 const OPERATOR_KEY = "75clubgames";
@@ -27,45 +28,49 @@ const generateHashSignature = (token, timestamp) => {
 export const spribeLaunchGame = async (req, res) => {
   const userToken = req.userToken;
   const { gameName } = req.body;
-  const game = gameName;
 
-  // console.log(userToken, gameName, game)
+  logToFile(`[LAUNCH] Incoming request: token=${userToken}, game=${gameName}`);
 
   try {
     const [userRows] = await connection.query(
       "SELECT * FROM users WHERE token = ?",
       [userToken],
     );
+    logToFile(`[LAUNCH] DB lookup result: ${JSON.stringify(userRows)}`);
 
-    // console.log(userRows,"userRows")
-    // Check if user exists
     if (!userRows.length) {
+      logToFile(`[LAUNCH] ERROR: No user found for token ${userToken}`);
       return res.status(404).json({
         errorCode: 4,
         message: "Token expired or invalid",
       });
     }
 
-    const playerId = userRows[0].phone; // Get the actual player ID from the database
-    const userId = userRows[0].id_user; // Get the actual player ID from the database
-
-    // Generate the token and hash signature
-    const timestamp = Date.now();
-    const token = generateToken(playerId, timestamp);
-    const hashSignature = generateHashSignature(token, timestamp);
+    const user = userRows[0];
+    const token = generateToken(user.phone, Date.now());
+    logToFile(`[LAUNCH] Generated token: ${token}`);
 
     await connection.query(
       "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
-      [token, playerId],
+      [token, user.phone],
     );
-    console.log(token, "token");
-    // Create launch URL
-    const launchUrl = `${API_URL}/${game}?user=${userId}&token=${token}&currency=${currency}&lang=EN&return_url=${return_url}&operator=${OPERATOR_KEY}`;
-    console.log(launchUrl);
+    logToFile(`[LAUNCH] Updated spribeLaunchToken for phone=${user.phone}`);
+
+    const launchParams = new URLSearchParams({
+      user: user.id_user,
+      token: token,
+      lang: LANG,
+      currency: CURRENCY,
+      operator: OPERATOR_KEY,
+      account_history_url: CALLBACK_URL,
+    });
+    const launchUrl = `${API_URL}/${gameName}?${launchParams.toString()}`;
+    logToFile(`[LAUNCH] Final game URL: ${launchUrl}`);
+
     return res.json({ Data: launchUrl });
   } catch (error) {
-    console.error("Error fetching player game link:", error);
-    throw error;
+    logToFile(`[LAUNCH][EXCEPTION] ${error.message}\n${error.stack}`);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
