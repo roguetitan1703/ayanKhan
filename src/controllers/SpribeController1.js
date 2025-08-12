@@ -106,111 +106,6 @@ export const validateSpribeSignature = (req) => {
   return { valid: true };
 };
 
-// export const spribeLaunchGame = async (req, res) => {
-//   const userToken = req.userToken;
-//   const { gameName } = req.body;
-
-//   // Validate game name against allowed games
-//   const allowedGames = [
-//     "aviator",
-//     "balloon",
-//     "dice",
-//     "fortune-wheel",
-//     "goal",
-//     "hi-lo",
-//     "hotline",
-//     "keno",
-//     "mines",
-//     "mini-roulette",
-//     "multikeno",
-//     "plinko",
-//   ];
-
-//   if (!allowedGames.includes(gameName)) {
-//     return res.status(400).json({
-//       errorCode: 400,
-//       message: "Invalid game name",
-//       validGames: allowedGames,
-//     });
-//   }
-
-//   try {
-//     // Get user details
-//     const [userRows] = await connection.query(
-//       "SELECT id_user, phone, name_user FROM users WHERE token = ?",
-//       [userToken],
-//     );
-
-//     if (!userRows.length) {
-//       return res.status(401).json({
-//         errorCode: 401,
-//         message: "Invalid user token",
-//       });
-//     }
-
-//     const user = userRows[0];
-//     const timestamp = Date.now();
-
-//     // Generate authentication tokens
-//     const token = generateToken(user.phone, timestamp);
-//     const hashSignature = generateHashSignature(token, timestamp);
-
-//     // Update user with launch token
-//     await connection.query(
-//       "UPDATE users SET spribeLaunchToken = ?  WHERE id_user = ?",
-//       [token, user.id_user],
-//     );
-
-//     // Construct launch URL with required parameters
-//     const launchParams = new URLSearchParams({
-//       user: String(user.id_user),
-//       token: token,
-//       lang: LANG,
-//       currency: CURRENCY,
-//       //return_url: CALLBACK_URL,
-//       operator: OPERATOR_KEY,
-//       account_history_url: CALLBACK_URL,
-//       //irc_duration: "1800", // 30 minutes in seconds
-//       //irc_elapsed: "600", // 10 minutes in seconds
-//     });
-
-//     const launchUrl = `${API_URL}/${gameName}?${launchParams.toString()}`;
-//     const demoUrl = `${DEMO_URL}/${gameName}?currency=UAH&lang=${LANG}&return_url=${encodeURIComponent(CALLBACK_URL)}`;
-
-//     // Response with both real and demo URLs
-//     // return res.json({
-//     //   success: true,
-//     //   data: {
-//     //     launchUrl: launchUrl,
-//     //     demoUrl: demoUrl,
-//     //     userDetails: {
-//     //       userId: user.id_user,
-//     //       username: user.name_user,
-//     //       currency: CURRENCY,
-//     //     },
-//     //     signature: hashSignature,
-//     //   },
-//     // });
-//     return res.json({
-//       Data: launchUrl,
-//     });
-//   } catch (error) {
-//     console.error("Spribe Game Launch Error:", {
-//       error: error.message,
-//       stack: error.stack,
-//       body: req.body,
-//       timestamp: new Date().toISOString(),
-//     });
-
-//     return res.status(500).json({
-//       errorCode: 500,
-//       message: "Game launch failed",
-//       detail:
-//         process.env.NODE_ENV === "development" ? error.message : undefined,
-//     });
-//   }
-// };
-
 export const spribeLaunchGame = async (req, res) => {
   const userToken = req.userToken;
   const { gameName } = req.body;
@@ -312,92 +207,92 @@ export const spribeInfo = async (req, res) => {
   }
 };
 
+export const spribeAuth = async (req, res) => {
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
+
+  const { user_token, session_token, platform, currency } = req.body;
+
+  try {
+    const [userRows] = await connection.query(
+      "SELECT * FROM users WHERE spribeLaunchToken = ?",
+      [session_token],
+    );
+
+    if (!userRows.length) {
+      return res.status(200).json({
+        code: 401,
+        message: "User token is invalid",
+      });
+    }
+
+    const user = userRows[0];
+
+    // Optional: Expiry check
+    if (user.token_expiry && new Date(user.token_expiry) < new Date()) {
+      return res.status(200).json({
+        code: 403,
+        message: "User token is expired",
+      });
+    }
+
+    return res.status(200).json({
+      code: 200,
+      message: "ok",
+      data: {
+        user_id: String(user.id_user),
+        username: user.name_user,
+        balance: Math.floor(Number(user.money) * 1000), // Convert to units
+        currency: currency || "INR",
+        platform: platform || "desktop",
+      },
+    });
+  } catch (error) {
+    console.error("Error in spribeAuth:", error);
+    return res.status(200).json({
+      code: 500,
+      message: "Internal error",
+    });
+  }
+};
+
 // export const spribeAuth = async (req, res) => {
-//   // const validation = validateSpribeSignature(req);
-//   // if (!validation.valid) return res.status(200).json(validation);
-
-//   const { user_token, session_token, platform, currency } = req.body;
-
+//   if (!validateSpribeSignature(req)) {
+//     return res.status(403).json({ code: 403, message: "Invalid signature" });
+//   }
 //   try {
+//     const { user_token, currency } = req.body;
+//     if (!user_token) {
+//       return res.status(400).json({ code: 400, message: "Missing user_token" });
+//     }
+
+//     // Lookup user by session token
 //     const [userRows] = await connection.query(
 //       "SELECT * FROM users WHERE spribeLaunchToken = ?",
 //       [user_token],
 //     );
-
 //     if (!userRows.length) {
-//       return res.status(200).json({
-//         code: 401,
-//         message: "User token is invalid",
-//       });
+//       return res
+//         .status(200)
+//         .json({ code: 401, message: "Token expired or invalid" });
 //     }
-
 //     const user = userRows[0];
 
-//     // Optional: Expiry check
-//     if (user.token_expiry && new Date(user.token_expiry) < new Date()) {
-//       return res.status(200).json({
-//         code: 403,
-//         message: "User token is expired",
-//       });
-//     }
-
-//     return res.status(200).json({
+//     return res.json({
 //       code: 200,
-//       message: "ok",
+//       message: "Success",
 //       data: {
-//         user_id: String(user.id_user),
+//         user_id: user.id_user,
 //         username: user.name_user,
-//         balance: Math.floor(Number(user.money) * 1000), // Convert to units
+//         balance: Number(user.money) * 1000,
 //         currency: currency || "INR",
-//         platform: platform || "desktop",
 //       },
 //     });
 //   } catch (error) {
-//     console.error("Error in spribeAuth:", error);
-//     return res.status(200).json({
-//       code: 500,
-//       message: "Internal error",
-//     });
+//     console.error("[SPRIBE][AUTH][EXCEPTION]", error, req.body);
+//     return res.status(200).json({ code: 500, message: "Internal error" });
 //   }
 // };
-
-export const spribeAuth = async (req, res) => {
-  if (!validateSpribeSignature(req)) {
-    return res.status(403).json({ code: 403, message: "Invalid signature" });
-  }
-  try {
-    const { user_token, currency } = req.body;
-    if (!user_token) {
-      return res.status(400).json({ code: 400, message: "Missing user_token" });
-    }
-
-    // Lookup user by session token
-    const [userRows] = await connection.query(
-      "SELECT * FROM users WHERE spribeLaunchToken = ?",
-      [user_token],
-    );
-    if (!userRows.length) {
-      return res
-        .status(200)
-        .json({ code: 401, message: "Token expired or invalid" });
-    }
-    const user = userRows[0];
-
-    return res.json({
-      code: 200,
-      message: "Success",
-      data: {
-        user_id: user.id_user,
-        username: user.name_user,
-        balance: Number(user.money) * 1000,
-        currency: currency || "INR",
-      },
-    });
-  } catch (error) {
-    console.error("[SPRIBE][AUTH][EXCEPTION]", error, req.body);
-    return res.status(200).json({ code: 500, message: "Internal error" });
-  }
-};
 
 //working code
 //✅ WITHDRAW (Player bets → deduct from balance)
