@@ -245,8 +245,23 @@ export const spribeLaunchGame = async (req, res) => {
       [token, playerId],
     );
 
+    //Construct launch URL with required parameters
+    const launchParams = new URLSearchParams({
+      user: String(userId),
+      token: token,
+      lang: LANG,
+      currency: CURRENCY,
+      //return_url: CALLBACK_URL,
+      operator: OPERATOR_KEY,
+      account_history_url: CALLBACK_URL,
+      //irc_duration: "1800", // 30 minutes in seconds
+      //irc_elapsed: "600", // 10 minutes in seconds
+    });
+
+    const launchUrl = `${API_URL}/${gameName}?${launchParams.toString()}`;
+
     // Build launch URL
-    const launchUrl = `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
+    //const launchUrl = `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(CALLBACK_URL)}&operator=${OPERATOR_KEY}`;
 
     // Respond
     return res.json({ Data: launchUrl });
