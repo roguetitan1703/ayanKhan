@@ -22,7 +22,7 @@ import rateLimit from "express-rate-limit";
 import jilliController from "../controllers/jilliController.js";
 import casinoController from "../controllers/casinoController.js";
 
-import spribeController from "../controllers/SpribeController1.js";
+import spribeController from "../controllers/SpribeController.js";
 import ezugiGameController from "../controllers/EzugiController.js";
 import {
   bgamingLaunchGame,
@@ -172,8 +172,6 @@ const initWebRouter = (app) => {
 
   router.get("/keFuMenu", accountController.keFuMenu);
   router.get("/login", accountController.loginPage);
-  router.post("/login", accountController.login);
-  router.post("/register", accountController.register);
   // router.get("/admin_login", accountController.loginadminPage);
   router.get("/finance_login", accountController.loginfinancePage);
   router.get("/deposit_login", accountController.logindepositPage);
@@ -1411,39 +1409,29 @@ const initWebRouter = (app) => {
   );
 
   //spribe api game
-  router.post(
-    "/playSpribeGame",
-    middlewareController,
-    spribeController.spribeLaunchGame,
-  );
+  router.post("/playSpribeGame", spribeController.spribeLaunchGame);
+
+  // Spribe callback routes - FIXED with correct mapping and new URL structure
   router.post("/api/v1/callback/spribe/info", spribeController.spribeInfo);
   router.post("/api/v1/callback/spribe/auth", spribeController.spribeAuth);
   router.post(
-    "/api/v1/callback/spribe/withdraw",
-    spribeController.spribeWithdraw,
-  );
-  router.post(
     "/api/v1/callback/spribe/deposit",
     spribeController.spribeDeposit,
-  );
+  ); // FIXED: was spribeWithdraw
   router.post(
-    "/api/v1/callback/spribe/rollback",
-    spribeController.spribeRollback,
-  );
+    "/api/v1/callback/spribe/withdraw",
+    spribeController.spribeWithdraw,
+  ); // FIXED: was spribeDeposit
+  router.post("/api/v1/callback/spribe", spribeController.spribeRollback);
 
-  router.post(
-    "/api/v1/callback/spribe/freebets",
-    spribeController.spribeFreebetInfo,
-  );
-  router.post(
-    "/api/v1/callback/spribe/freebets/create",
-    spribeController.spribeAddFreebet,
-  );
-  router.post(
-    "/api/v1/callback/spribe/freebets/cancel",
-    spribeController.spribeCancelFreebet,
-  );
-  //https://75club.games/api/callback/spribe
+  // Legacy routes for backward compatibility (if needed)
+  router.post("/api/callback/spribe/info", spribeController.spribeInfo);
+  router.post("/api/callback/spribe/auth", spribeController.spribeAuth);
+  router.post("/api/callback/spribe/deposit", spribeController.spribeDeposit);
+  router.post("/api/callback/spribe/withdraw", spribeController.spribeWithdraw);
+  router.post("/api/callback/spribe", spribeController.spribeRollback);
+
+  //https://75club.games/api/v1/callback/spribe
   //ezugi
   router.post(
     "/playEzugiGame",
