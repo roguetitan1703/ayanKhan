@@ -992,8 +992,6 @@ export const spribeDeposit = async (req, res) => {
 //   }
 // };
 
-import connection from "../config/connectDB.js"; // Adjust path
-
 export const spribeRollback = async (req, res) => {
   // Optional: Enable signature check if needed for staging
   // const validation = validateSpribeSignature(req);
