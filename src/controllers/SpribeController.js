@@ -135,7 +135,25 @@ export const spribeLaunchGame = async (req, res) => {
 
     // Generate token
     const timestamp = Date.now();
-    const token = generateToken(playerId, timestamp);
+    //const token = generateToken(playerId, timestamp);
+
+    // Modify the token generation block
+    let token;
+    try {
+      if (!playerId) throw new Error("playerId is undefined");
+      token = generateToken(playerId, timestamp);
+      logSpribe("TOKEN_GENERATED", "Game token created", {
+        playerId,
+        token: token ? "***REDACTED***" : null,
+      });
+    } catch (err) {
+      logSpribe("TOKEN_ERROR", "Token generation failed", {
+        error: err.message,
+        playerId,
+        userId,
+      });
+      return res.status(500).json({ error: "Token generation failed" });
+    }
 
     // Save token for later validation
     await connection.query(
