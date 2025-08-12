@@ -166,10 +166,11 @@ export const spribeAuth = async (req, res) => {
       "SELECT * FROM users WHERE spribeLaunchToken = ?",
       [user_token],
     );
+
     logToFile(`[AUTH] DB lookup result: ${JSON.stringify(userRows)}`);
 
     if (!userRows.length) {
-      logToFile(`[AUTH] ERROR: Invalid token ${user_token}`);
+      logToFile(`[AUTH] ERROR: Invalid token received: ${user_token}`);
       return res.status(200).json({
         code: 401,
         message: "User token is invalid",
@@ -177,7 +178,9 @@ export const spribeAuth = async (req, res) => {
     }
 
     const user = userRows[0];
-    logToFile(`[AUTH] User found: id=${user.id_user}, balance=${user.money}`);
+    logToFile(
+      `[AUTH] User found: id=${user.id_user}, username=${user.name_user}, balance=${user.money}`,
+    );
 
     return res.status(200).json({
       code: 200,
