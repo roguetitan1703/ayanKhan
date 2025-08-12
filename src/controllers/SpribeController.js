@@ -195,10 +195,11 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
 // };
 
 export const spribeLaunchGame = async (req, res) => {
+  // Start transaction timer
   console.time("[SPRIBE][LAUNCH_GAME_TOTAL_TIME]");
 
   try {
-    // 1. Connection check
+    // 1. Initial connection check
     console.log("[SPRIBE][CONNECTION_POOL]", {
       free: connection.pool?._freeConnections?.length,
       all: connection.pool?._allConnections?.length,
@@ -266,8 +267,8 @@ export const spribeLaunchGame = async (req, res) => {
 
     // 5. Token generation
     console.time("[SPRIBE][TOKEN_GENERATION_TIME]");
-    let token;
     const timestamp = Date.now();
+    let token;
 
     try {
       token = generateToken(playerId, timestamp);
@@ -319,7 +320,7 @@ export const spribeLaunchGame = async (req, res) => {
       });
     }
 
-    // 7. URL construction with forced auth_url param
+    // 7. URL construction
     console.time("[SPRIBE][URL_CONSTRUCTION_TIME]");
     const launchUrl = new URL(`${API_URL}/${gameName}`);
     const params = new URLSearchParams({
@@ -329,8 +330,6 @@ export const spribeLaunchGame = async (req, res) => {
       lang: "EN",
       return_url: RETURN_URL,
       operator: OPERATOR_KEY,
-      account_history_url: CALLBACK_URL,
-      auth_url: "https://75club.games/api/v1/callback/spribe/auth", // 🔹 Force SPRIBE to hit auth
     });
     launchUrl.search = params.toString();
 
@@ -339,7 +338,7 @@ export const spribeLaunchGame = async (req, res) => {
       baseUrl: API_URL,
       gameName,
       paramCount: params.toString().split("&").length,
-      finalUrl: launchUrl.toString(),
+      finalUrl: `${launchUrl.protocol}//${launchUrl.host}${launchUrl.pathname}?***REDACTED***`,
     });
 
     // 8. Response preparation
