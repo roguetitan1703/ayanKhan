@@ -156,10 +156,32 @@ export const spribeLaunchGame = async (req, res) => {
     }
 
     // Save token for later validation
-    await connection.query(
-      "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
-      [token, playerId],
-    );
+    // await connection.query(
+    //   "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
+    //   [token, playerId],
+    // );
+
+    try {
+      const [updateResult] = await connection.query(
+        "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
+        [token, playerId],
+      );
+
+      console.log("[SPRIBE][DB_UPDATE]", {
+        affectedRows: updateResult.affectedRows,
+        changedRows: updateResult.changedRows,
+      });
+
+      if (updateResult.affectedRows === 0) {
+        throw new Error("Failed to update user token");
+      }
+    } catch (dbError) {
+      console.error("[SPRIBE][DB_UPDATE_ERROR]", dbError);
+      return res.status(500).json({
+        error: "Database update failed",
+        details: dbError.message,
+      });
+    }
 
     // Build launch URL
     const launchUrl = `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
