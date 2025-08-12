@@ -103,6 +103,12 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
 }
 
 export const spribeLaunchGame = async (req, res) => {
+  // Add this at the start of the controller
+  console.log("[SPRIBE][CONNECTION_POOL]", {
+    free: connection.pool?._freeConnections?.length,
+    all: connection.pool?._allConnections?.length,
+    state: connection.state,
+  });
   const userToken = req.userToken || req.cookies?.auth;
   const { gameName } = req.body;
 
@@ -183,11 +189,25 @@ export const spribeLaunchGame = async (req, res) => {
       });
     }
 
-    // Build launch URL
-    const launchUrl = `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
+    // // Build launch URL
+    // const launchUrl = `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
 
-    // Respond
-    return res.json({ Data: launchUrl });
+    // // Respond
+    // return res.json({ Data: launchUrl });
+    // Before returning the response
+    console.log("[SPRIBE][PRE_RESPONSE]", {
+      launchUrl : `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
+      responseReady: true,
+    });
+
+    const responseData = { Data: launchUrl };
+    res.json(responseData);
+
+    // Verify response was sent
+    console.log("[SPRIBE][POST_RESPONSE]", {
+      statusCode: res.statusCode,
+      headersSent: res.headersSent,
+    });
   } catch (error) {
     console.error("[SPRIBE][LAUNCH][EXCEPTION]", error);
     return res.status(500).json({ error: "Internal server error" });
