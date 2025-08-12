@@ -102,115 +102,275 @@ export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
   return signature === expectedSignature;
 }
 
+// export const spribeLaunchGame = async (req, res) => {
+//   const userToken = req.userToken || req.cookies?.auth;
+//   const { gameName } = req.body;
+
+//   console.log("[SPRIBE][LAUNCH]", { userToken, gameName });
+
+//   if (!userToken) {
+//     return res.status(401).json({
+//       errorCode: 1,
+//       message: "Authentication required",
+//     });
+//   }
+
+//   try {
+//     const [userRows] = await connection.query(
+//       "SELECT * FROM users WHERE token = ?",
+//       [userToken],
+//     );
+
+//     console.log("[SPRIBE][LAUNCH]", { userRows: userRows.length });
+//     // Check if user exists
+//     if (!userRows.length) {
+//       return res.status(404).json({
+//         errorCode: 4,
+//         message: "Token expired or invalid",
+//       });
+//     }
+//     const user = userRows[0];
+//     const playerId = user.phone; // or user.id_user, depending on your logic
+//     const userId = user.id_user;
+
+//     // Generate token
+//     const timestamp = Date.now();
+//     //const token = generateToken(playerId, timestamp);
+
+//     // Modify the token generation block
+//     let token;
+//     try {
+//       if (!playerId) throw new Error("playerId is undefined");
+//       token = generateToken(playerId, timestamp);
+//       logSpribe("TOKEN_GENERATED", "Game token created", {
+//         playerId,
+//         token: token ? "***REDACTED***" : null,
+//       });
+//     } catch (err) {
+//       logSpribe("TOKEN_ERROR", "Token generation failed", {
+//         error: err.message,
+//         playerId,
+//         userId,
+//       });
+//       return res.status(500).json({ error: "Token generation failed" });
+//     }
+
+//     // Save token for later validation
+//     // await connection.query(
+//     //   "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
+//     //   [token, playerId],
+//     // );
+
+//     try {
+//       const [updateResult] = await connection.query(
+//         "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
+//         [token, playerId],
+//       );
+
+//       console.log("[SPRIBE][DB_UPDATE]", {
+//         affectedRows: updateResult.affectedRows,
+//         changedRows: updateResult.changedRows,
+//       });
+
+//       if (updateResult.affectedRows === 0) {
+//         throw new Error("Failed to update user token");
+//       }
+//     } catch (dbError) {
+//       console.error("[SPRIBE][DB_UPDATE_ERROR]", dbError);
+//       return res.status(500).json({
+//         error: "Database update failed",
+//         details: dbError.message,
+//       });
+//     }
+
+//     // Build launch URL
+//     const launchUrl = `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
+
+//     // Respond
+//     return res.json({ Data: launchUrl });
+//   } catch (error) {
+//     console.error("[SPRIBE][LAUNCH][EXCEPTION]", error);
+//     return res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
 export const spribeLaunchGame = async (req, res) => {
-  // Add this at the start of the controller
-  console.log("[SPRIBE][CONNECTION_POOL]", {
-    free: connection.pool?._freeConnections?.length,
-    all: connection.pool?._allConnections?.length,
-    state: connection.state,
-  });
-  const userToken = req.userToken || req.cookies?.auth;
-  const { gameName } = req.body;
-
-  console.log("[SPRIBE][LAUNCH]", { userToken, gameName });
-
-  if (!userToken) {
-    return res.status(401).json({
-      errorCode: 1,
-      message: "Authentication required",
-    });
-  }
+  // Start transaction timer
+  console.time("[SPRIBE][LAUNCH_GAME_TOTAL_TIME]");
 
   try {
+    // 1. Initial connection check
+    console.log("[SPRIBE][CONNECTION_POOL]", {
+      free: connection.pool?._freeConnections?.length,
+      all: connection.pool?._allConnections?.length,
+      state: connection.state,
+    });
+
+    // 2. Request validation
+    const userToken = req.userToken || req.cookies?.auth;
+    const { gameName } = req.body;
+
+    console.log("[SPRIBE][REQUEST_DETAILS]", {
+      method: req.method,
+      path: req.path,
+      headers: req.headers,
+      body: { ...req.body, userToken: userToken ? "***REDACTED***" : null },
+    });
+
+    if (!userToken) {
+      console.log("[SPRIBE][AUTH_ERROR]", "No user token provided");
+      return res.status(401).json({
+        errorCode: 1,
+        message: "Authentication required",
+      });
+    }
+
+    // 3. User lookup
+    console.time("[SPRIBE][USER_LOOKUP_TIME]");
     const [userRows] = await connection.query(
       "SELECT * FROM users WHERE token = ?",
       [userToken],
     );
+    console.timeEnd("[SPRIBE][USER_LOOKUP_TIME]");
 
-    console.log("[SPRIBE][LAUNCH]", { userRows: userRows.length });
-    // Check if user exists
+    console.log("[SPRIBE][USER_LOOKUP_RESULT]", {
+      userCount: userRows.length,
+      userId: userRows[0]?.id_user || null,
+    });
+
     if (!userRows.length) {
+      console.log("[SPRIBE][USER_NOT_FOUND]", { userToken });
       return res.status(404).json({
         errorCode: 4,
         message: "Token expired or invalid",
       });
     }
+
+    // 4. Prepare user data
     const user = userRows[0];
-    const playerId = user.phone; // or user.id_user, depending on your logic
+    const playerId = user.phone;
     const userId = user.id_user;
 
-    // Generate token
-    const timestamp = Date.now();
-    //const token = generateToken(playerId, timestamp);
+    console.log("[SPRIBE][USER_DETAILS]", {
+      userId,
+      playerId,
+      hasPhone: !!playerId,
+    });
 
-    // Modify the token generation block
-    let token;
-    try {
-      if (!playerId) throw new Error("playerId is undefined");
-      token = generateToken(playerId, timestamp);
-      logSpribe("TOKEN_GENERATED", "Game token created", {
-        playerId,
-        token: token ? "***REDACTED***" : null,
+    if (!playerId) {
+      console.log("[SPRIBE][INVALID_USER_DATA]", "Missing phone number");
+      return res.status(400).json({
+        errorCode: 2,
+        message: "User profile incomplete",
       });
-    } catch (err) {
-      logSpribe("TOKEN_ERROR", "Token generation failed", {
-        error: err.message,
-        playerId,
-        userId,
-      });
-      return res.status(500).json({ error: "Token generation failed" });
     }
 
-    // Save token for later validation
-    // await connection.query(
-    //   "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
-    //   [token, playerId],
-    // );
+    // 5. Token generation
+    console.time("[SPRIBE][TOKEN_GENERATION_TIME]");
+    const timestamp = Date.now();
+    let token;
 
+    try {
+      token = generateToken(playerId, timestamp);
+      console.timeEnd("[SPRIBE][TOKEN_GENERATION_TIME]");
+      console.log("[SPRIBE][TOKEN_GENERATED]", {
+        playerId,
+        tokenLength: token?.length,
+        timestamp,
+      });
+    } catch (err) {
+      console.error("[SPRIBE][TOKEN_ERROR]", {
+        error: err.message,
+        stack: err.stack,
+      });
+      return res.status(500).json({
+        errorCode: 5,
+        message: "Token generation failed",
+        details: err.message,
+      });
+    }
+
+    // 6. Database update
+    console.time("[SPRIBE][DB_UPDATE_TIME]");
     try {
       const [updateResult] = await connection.query(
         "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
         [token, playerId],
       );
 
-      console.log("[SPRIBE][DB_UPDATE]", {
+      console.timeEnd("[SPRIBE][DB_UPDATE_TIME]");
+      console.log("[SPRIBE][DB_UPDATE_RESULT]", {
         affectedRows: updateResult.affectedRows,
         changedRows: updateResult.changedRows,
       });
 
       if (updateResult.affectedRows === 0) {
-        throw new Error("Failed to update user token");
+        throw new Error("No rows were updated");
       }
     } catch (dbError) {
-      console.error("[SPRIBE][DB_UPDATE_ERROR]", dbError);
+      console.error("[SPRIBE][DB_UPDATE_FAILED]", {
+        error: dbError.message,
+        sqlMessage: dbError.sqlMessage,
+        code: dbError.code,
+      });
       return res.status(500).json({
-        error: "Database update failed",
+        errorCode: 6,
+        message: "Database update failed",
         details: dbError.message,
       });
     }
 
-    // // Build launch URL
-    // const launchUrl = `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
+    // 7. URL construction
+    console.time("[SPRIBE][URL_CONSTRUCTION_TIME]");
+    const launchUrl = new URL(`${API_URL}/${gameName}`);
+    const params = new URLSearchParams({
+      user: userId,
+      token: token,
+      currency: CURRENCY,
+      lang: "EN",
+      return_url: RETURN_URL,
+      operator: OPERATOR_KEY,
+    });
+    launchUrl.search = params.toString();
 
-    // // Respond
-    // return res.json({ Data: launchUrl });
-    // Before returning the response
-    console.log("[SPRIBE][PRE_RESPONSE]", {
-      launchUrl : `${API_URL}/${gameName}?user=${userId}&token=${token}&currency=${CURRENCY}&lang=EN&return_url=${encodeURIComponent(RETURN_URL)}&operator=${OPERATOR_KEY}`;
-      responseReady: true,
+    console.timeEnd("[SPRIBE][URL_CONSTRUCTION_TIME]");
+    console.log("[SPRIBE][URL_DETAILS]", {
+      baseUrl: API_URL,
+      gameName,
+      paramCount: params.toString().split("&").length,
+      finalUrl: `${launchUrl.protocol}//${launchUrl.host}${launchUrl.pathname}?***REDACTED***`,
     });
 
-    const responseData = { Data: launchUrl };
-    res.json(responseData);
+    // 8. Response preparation
+    const responseData = { Data: launchUrl.toString() };
+    console.log("[SPRIBE][RESPONSE_PREPARED]", {
+      dataLength: JSON.stringify(responseData).length,
+      containsUrl: !!responseData.Data,
+    });
 
-    // Verify response was sent
-    console.log("[SPRIBE][POST_RESPONSE]", {
+    // 9. Send response
+    console.time("[SPRIBE][RESPONSE_SEND_TIME]");
+    res.json(responseData);
+    console.timeEnd("[SPRIBE][RESPONSE_SEND_TIME]");
+    console.log("[SPRIBE][RESPONSE_SENT]", {
       statusCode: res.statusCode,
       headersSent: res.headersSent,
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[SPRIBE][LAUNCH][EXCEPTION]", error);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("[SPRIBE][UNHANDLED_ERROR]", {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+    });
+    return res.status(500).json({
+      errorCode: 0,
+      message: "Internal server error",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  } finally {
+    console.timeEnd("[SPRIBE][LAUNCH_GAME_TOTAL_TIME]");
   }
 };
 
