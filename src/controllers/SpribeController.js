@@ -61,53 +61,12 @@ function getRawBody(req) {
   return JSON.stringify(req.body);
 }
 
-// export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
-//   const clientId = req.headers["x-spribe-client-id"];
-//   const timestamp = req.headers["x-spribe-client-ts"];
-//   const signature = req.headers["x-spribe-client-signature"];
-
-//   logSpribe("SIGNATURE_DEBUG", "Signature validation attempt", {
-//     clientId,
-//     timestamp,
-//     signature,
-//     url: req.originalUrl,
-//     method: req.method,
-//     body: req.body,
-//   });
-
-//   if (!clientId || !timestamp || !signature) {
-//     logSpribe("SIGNATURE_ERROR", "Missing required headers");
-//     return false;
-//   }
-
-//   // Build the string to sign
-//   const pathWithQuery = req.originalUrl.split("?")[0]; // e.g., /api/callback/spribe/auth
-//   const rawBody = getRawBody(req);
-
-//   const stringToSign = `${timestamp}${pathWithQuery}${rawBody}`;
-//   const expectedSignature = crypto
-//     .createHmac("sha256", secret)
-//     .update(stringToSign)
-//     .digest("hex");
-
-//   logSpribe("SIGNATURE_DEBUG", "Signature calculation", {
-//     pathWithQuery,
-//     rawBody,
-//     stringToSign,
-//     expectedSignature,
-//     receivedSignature: signature,
-//     isValid: signature === expectedSignature,
-//   });
-
-//   return signature === expectedSignature;
-// }
-export const validateSpribeSignature = (req) => {
+export function validateSpribeSignature(req, secret = SECRET_TOKEN) {
   const clientId = req.headers["x-spribe-client-id"];
   const timestamp = req.headers["x-spribe-client-ts"];
   const signature = req.headers["x-spribe-client-signature"];
 
-  // Log validation attempt
-  console.log("[SPRIBE][SIGNATURE_DEBUG] Validation attempt", {
+  logSpribe("SIGNATURE_DEBUG", "Signature validation attempt", {
     clientId,
     timestamp,
     signature,
@@ -116,68 +75,32 @@ export const validateSpribeSignature = (req) => {
     body: req.body,
   });
 
-  // Check for required headers
   if (!clientId || !timestamp || !signature) {
-    console.log("[SPRIBE][SIGNATURE_ERROR] Missing required headers");
-    return {
-      valid: false,
-      code: 413,
-      message:
-        "Missing required headers: X-Spribe-Client-ID, X-Spribe-Client-TS, or X-Spribe-Client-Signature",
-    };
+    logSpribe("SIGNATURE_ERROR", "Missing required headers");
+    return false;
   }
 
-  // Verify client ID
-  if (clientId !== OPERATOR_KEY) {
-    console.log("[SPRIBE][SIGNATURE_ERROR] Invalid Client ID", { clientId });
-    return {
-      valid: false,
-      code: 413,
-      message: "Invalid X-Spribe-Client-ID",
-    };
-  }
+  // Build the string to sign
+  const pathWithQuery = req.originalUrl.split("?")[0]; // e.g., /api/callback/spribe/auth
+  const rawBody = getRawBody(req);
 
-  // Get the request path with query parameters (without domain)
-  const pathWithQuery = req.originalUrl;
-
-  // Get the raw body and minify it to remove newlines and extra whitespace
-  let rawBody = req.rawBody
-    ? req.rawBody.toString("utf8")
-    : JSON.stringify(req.body, null, 0);
-  // Minify JSON to match Spribe's expected format (no newlines or indentation)
-  rawBody = JSON.stringify(JSON.parse(rawBody), null, 0);
-
-  // Concatenate timestamp, path, and minified body as per Spribe documentation
   const stringToSign = `${timestamp}${pathWithQuery}${rawBody}`;
-  console.log("[SPRIBE][SIGNATURE_DEBUG] String to sign", {
-    stringToSign,
-    rawBody,
-  });
-
-  // Generate HMAC SHA256 signature using client secret
-  const calculatedSignature = crypto
-    .createHmac("sha256", SECRET_TOKEN)
+  const expectedSignature = crypto
+    .createHmac("sha256", secret)
     .update(stringToSign)
     .digest("hex");
 
-  console.log("[SPRIBE][SIGNATURE_DEBUG] Signature comparison", {
-    calculatedSignature,
+  logSpribe("SIGNATURE_DEBUG", "Signature calculation", {
+    pathWithQuery,
+    rawBody,
+    stringToSign,
+    expectedSignature,
     receivedSignature: signature,
-    isValid: calculatedSignature === signature,
+    isValid: signature === expectedSignature,
   });
 
-  // Compare signatures
-  if (calculatedSignature !== signature) {
-    console.log("[SPRIBE][SIGNATURE_ERROR] Signature mismatch");
-    return {
-      valid: false,
-      code: 413,
-      message: "Invalid Client-Signature",
-    };
-  }
-
-  return { valid: true };
-};
+  return signature === expectedSignature;
+}
 
 export const spribeLaunchGame = async (req, res) => {
   const userToken = req.userToken || req.cookies?.auth;
