@@ -1,10 +1,9 @@
 import axios from "axios";
 import connection from "../config/connectDB.js";
 import crypto from "crypto";
-import { logToFile } from "../utils/simpleLogger.js";
 
-const SECRET_TOKEN = "8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC";
-const OPERATOR_KEY = "75clubgames";
+const SECRET_TOKEN = "P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ";
+const OPERATOR_KEY = "reddybook75new";
 const API_URL = "https://dev-test.spribe.io/games/launch";
 const return_url = "https://75club.games/";
 const currency = "INR";
@@ -29,17 +28,19 @@ export const spribeLaunchGame = async (req, res) => {
   const userToken = req.userToken;
   const { gameName } = req.body;
 
-  logToFile(`[LAUNCH] Incoming request: token=${userToken}, game=${gameName}`);
+  console.log(
+    `[LAUNCH] Incoming request: token=${userToken}, game=${gameName}`,
+  );
 
   try {
     const [userRows] = await connection.query(
       "SELECT * FROM users WHERE token = ?",
       [userToken],
     );
-    logToFile(`[LAUNCH] DB lookup result: ${JSON.stringify(userRows)}`);
+    console.log(`[LAUNCH] DB lookup result: ${JSON.stringify(userRows)}`);
 
     if (!userRows.length) {
-      logToFile(`[LAUNCH] ERROR: No user found for token ${userToken}`);
+      console.log(`[LAUNCH] ERROR: No user found for token ${userToken}`);
       return res.status(404).json({
         errorCode: 4,
         message: "Token expired or invalid",
@@ -48,13 +49,13 @@ export const spribeLaunchGame = async (req, res) => {
 
     const user = userRows[0];
     const token = generateToken(user.phone, Date.now());
-    logToFile(`[LAUNCH] Generated token: ${token}`);
+    console.log(`[LAUNCH] Generated token: ${token}`);
 
     await connection.query(
       "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
       [token, user.phone],
     );
-    logToFile(`[LAUNCH] Updated spribeLaunchToken for phone=${user.phone}`);
+    console.log(`[LAUNCH] Updated spribeLaunchToken for phone=${user.phone}`);
 
     const launchParams = new URLSearchParams({
       user: user.id_user,
@@ -65,11 +66,11 @@ export const spribeLaunchGame = async (req, res) => {
       account_history_url: CALLBACK_URL,
     });
     const launchUrl = `${API_URL}/${gameName}?${launchParams.toString()}`;
-    logToFile(`[LAUNCH] Final game URL: ${launchUrl}`);
+    console.log(`[LAUNCH] Final game URL: ${launchUrl}`);
 
     return res.json({ Data: launchUrl });
   } catch (error) {
-    logToFile(`[LAUNCH][EXCEPTION] ${error.message}\n${error.stack}`);
+    console.log(`[LAUNCH][EXCEPTION] ${error.message}\n${error.stack}`);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
