@@ -164,47 +164,6 @@ export const spribeLaunchGame = async (req, res) => {
   }
 };
 
-export const spribeInfo = async (req, res) => {
-  // const validation = validateSpribeSignature(req);
-  // if (!validation.valid) return res.status(200).json(validation);
-  const { session_token, currency, user_id } = req.body;
-
-  try {
-    const [userRows] = await connection.query(
-      "SELECT * FROM users WHERE id_user = ?",
-      [user_id],
-    );
-
-    if (!userRows.length) {
-      return res.status(200).json({
-        code: 401,
-        message: "User token is invalid",
-      });
-    }
-
-    const user = userRows[0];
-    const response = {
-      code: 200,
-      message: "ok",
-      data: {
-        user_id: user.id_user,
-        username: user.name_user,
-        balance: Math.floor(Number(user.money) * 1000), // Convert to units (1 INR = 1000 units)
-        currency: currency || "INR", // Fallback to INR if not provided
-      },
-    };
-
-    return res.json(response);
-  } catch (error) {
-    console.error("Error in spribeInfo:", error);
-    return res.status(200).json({
-      code: 500,
-      message: "Internal error",
-      detail: error.message,
-    });
-  }
-};
-
 export const spribeAuth = async (req, res) => {
   // const validation = validateSpribeSignature(req);
   // if (!validation.valid) return res.status(200).json(validation);
@@ -240,7 +199,7 @@ export const spribeAuth = async (req, res) => {
       data: {
         user_id: String(user.id_user),
         username: user.name_user,
-        balance: Math.floor(Number(user.money) * 1000), // Convert to units
+        balance: Math.floor((Number(user.money) || 0) * 1000), // Convert to units
         currency: currency || "INR",
         platform: platform || "desktop",
       },
@@ -1079,6 +1038,47 @@ export const spribeRollback = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in spribeRollback:", error);
+    return res.status(200).json({
+      code: 500,
+      message: "Internal error",
+      detail: error.message,
+    });
+  }
+};
+
+export const spribeInfo = async (req, res) => {
+  // const validation = validateSpribeSignature(req);
+  // if (!validation.valid) return res.status(200).json(validation);
+  const { session_token, currency, user_id } = req.body;
+
+  try {
+    const [userRows] = await connection.query(
+      "SELECT * FROM users WHERE id_user = ?",
+      [user_id],
+    );
+
+    if (!userRows.length) {
+      return res.status(200).json({
+        code: 401,
+        message: "User token is invalid",
+      });
+    }
+
+    const user = userRows[0];
+    const response = {
+      code: 200,
+      message: "ok",
+      data: {
+        user_id: user.id_user,
+        username: user.name_user,
+        balance: Math.floor(Number(user.money) * 1000), // Convert to units (1 INR = 1000 units)
+        currency: currency || "INR", // Fallback to INR if not provided
+      },
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error("Error in spribeInfo:", error);
     return res.status(200).json({
       code: 500,
       message: "Internal error",
