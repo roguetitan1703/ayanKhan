@@ -267,7 +267,7 @@ export const spribeLaunchGame = async (req, res) => {
 
     // Construct launch URL with required parameters
     const launchParams = new URLSearchParams({
-      user: String(user.id_user),
+      user: user.id_user,
       token: token,
       lang: LANG,
       currency: CURRENCY,
