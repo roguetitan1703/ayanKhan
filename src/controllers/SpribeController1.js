@@ -127,17 +127,15 @@ export const spribeLaunchGame = async (req, res) => {
       });
     }
     const user = userRows[0];
-    const playerId = user.phone; // or user.id_user, depending on your logic
-    const userId = user.id_user;
-
-    // Generate token
     const timestamp = Date.now();
-    const token = generateToken(playerId, timestamp);
 
-    // Save token for later validation
+    // Generate token same way as old code
+    const token = generateToken(user.phone, timestamp);
+
+    // Update token using phone as identifier (like old working code)
     await connection.query(
       "UPDATE users SET spribeLaunchToken = ? WHERE phone = ?",
-      [token, playerId],
+      [token, user.phone],
     );
 
     //Construct launch URL with required parameters
@@ -216,7 +214,7 @@ export const spribeAuth = async (req, res) => {
   try {
     const [userRows] = await connection.query(
       "SELECT * FROM users WHERE spribeLaunchToken = ?",
-      [session_token],
+      [user_token],
     );
 
     if (!userRows.length) {
