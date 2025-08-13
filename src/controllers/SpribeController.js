@@ -4,9 +4,9 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 
-// Updated credentials from Spribe
-const SECRET_TOKEN = "P8cs7H7swSnr1WwDRNQOBCPQjCLvkOlQ";
-const OPERATOR_KEY = "reddybook75new";
+// Staging credentials from Spribe (provided by Vitalii Nadych)
+const SECRET_TOKEN = "8VcEBp3iD3pSmPs7cvzaMNzFNmTjDSpC";
+const OPERATOR_KEY = "75clubgames";
 const API_URL = "https://dev-test.spribe.io/games/launch";
 const RETURN_URL = "https://75club.games/";
 const CURRENCY = "INR";
@@ -612,12 +612,10 @@ export const spribeRollback = async (req, res) => {
 
     // 1. Validate input
     if (!rollback_provider_tx_id || !amount) {
-      return res
-        .status(400)
-        .json({
-          code: 400,
-          message: "Missing rollback_provider_tx_id or amount",
-        });
+      return res.status(400).json({
+        code: 400,
+        message: "Missing rollback_provider_tx_id or amount",
+      });
     }
 
     // 2. Check if the original transaction exists

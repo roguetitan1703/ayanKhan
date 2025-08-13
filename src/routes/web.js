@@ -1409,16 +1409,19 @@ const initWebRouter = (app) => {
   );
 
   //spribe api game
-  router.post(
-    "/playSpribeGame",
-    spribeController.spribeLaunchGame,
-  );
-  
+  router.post("/playSpribeGame", spribeController.spribeLaunchGame);
+
   // Spribe callback routes - FIXED with correct mapping and new URL structure
   router.post("/api/v1/callback/spribe/info", spribeController.spribeInfo);
   router.post("/api/v1/callback/spribe/auth", spribeController.spribeAuth);
-  router.post("/api/v1/callback/spribe/deposit", spribeController.spribeDeposit); // FIXED: was spribeWithdraw
-  router.post("/api/v1/callback/spribe/withdraw", spribeController.spribeWithdraw); // FIXED: was spribeDeposit
+  router.post(
+    "/api/v1/callback/spribe/deposit",
+    spribeController.spribeDeposit,
+  ); // FIXED: was spribeWithdraw
+  router.post(
+    "/api/v1/callback/spribe/withdraw",
+    spribeController.spribeWithdraw,
+  ); // FIXED: was spribeDeposit
   router.post("/api/v1/callback/spribe", spribeController.spribeRollback);
 
   // Legacy routes for backward compatibility (if needed)
