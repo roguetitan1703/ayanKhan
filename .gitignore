@@ -13,3 +13,4 @@ package-lock.json
 tests/
 .vne
 .env
+logs/spribe.log
